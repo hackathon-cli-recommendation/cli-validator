@@ -1,0 +1,22 @@
+[project]
+name = "cli-validator"
+version = "0.0.1"
+authors = [
+  { name="qinkaiwu", email="qinkaiwu@microsoft.com" },
+]
+description = "Tool to validate if a command is valid for azure-cli"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "azure_storage_blob ~= 12.17.0",
+    "jmespath ~= 1.0.1",
+]
+
+[build-system]
+requires = ["setuptools ~= 68.0", 'wheel']
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,6 @@
+build/
+dist/
+/cmd_meta/
+/tests/test_meta/
+/tests/test_cache/
+venv/
