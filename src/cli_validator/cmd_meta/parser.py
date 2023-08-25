@@ -148,27 +148,23 @@ class CLIParser(argparse.ArgumentParser):
 
     def load_commands(self, commands, sp):
         """
-        Load Commands in same command group to the parser.
+        Load Commands in the same command group to the parser.
         :param commands: commands to be loaded
         :param sp: subparser that represents the command group
         """
         for name, command in commands.items():
             parser = sp.add_parser(name.split()[-1], add_help=True, parents=self.parents)
             for param in command['parameters']:
-                kwargs = {}
-                if 'choices' in param:
-                    kwargs['choices'] = param['choices']
-                if 'nargs' in param:
-                    kwargs['nargs'] = param['nargs']
-                if 'name' in param:
-                    kwargs['dest'] = param['name']
-                if 'required' in param and len(param['options']) > 0:
-                    kwargs['required'] = param['required']
-                if 'default' in param:
-                    kwargs['default'] = param['default']
-                if 'type' in param:
-                    kwargs['type'] = self.convert_type(param['type'])
+                kwargs = {
+                    'choices': param.get('choices'),
+                    'nargs': param.get('nargs'),
+                    'dest': param.get('name'),
+                    'required': param.get('required') and len(param['options']) > 0,
+                    'default': param.get('default'),
+                    'type': self.convert_type(param.get('type')),
+                }
                 parser.add_argument(*param['options'], **kwargs)
+
 
     def load_sub_groups(self, sub_groups, sp):
         """
