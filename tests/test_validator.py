@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from cli_validator import CLIValidator
+from cli_validator.validator import CLIValidator
 
 
 class CLIValidatorTestCase(TestCase):

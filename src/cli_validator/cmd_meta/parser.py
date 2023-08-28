@@ -1,22 +1,7 @@
 import argparse
 from typing import NoReturn
 
-from cli_validator.cmd_meta.loader import load_from_disk
-
-
-class UnknownTypeException(Exception):
-    def __init__(self, typ):
-        self.msg = f'UnknownType: {typ}'
-
-
-class ParserFailureException(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-
-class ParserHelpException(Exception):
-    def __init__(self):
-        self.msg = 'The user inputs `-h/--help`. This is not a real exception.'
+from cli_validator.exceptions import ParserHelpException, UnknownTypeException, ParserFailureException
 
 
 class CustomHelpAction(argparse.Action):
@@ -106,11 +91,11 @@ class CLIParser(argparse.ArgumentParser):
             raise UnknownTypeException(type_name)
 
     @staticmethod
-    def create_global_parser(prog='az'):
+    def create_global_parser():
         """
         Create a global Argument Parser for Global Arguments. This should be the parent of all subcommands.
         """
-        global_parser = argparse.ArgumentParser(prog=prog, add_help=False)
+        global_parser = argparse.ArgumentParser(add_help=False)
         arg_group = global_parser.add_argument_group('global', 'Global Arguments')
         arg_group.add_argument(CLIParser.VERBOSE_FLAG, dest='_log_verbosity_verbose', action='store_true',
                                help='Increase logging verbosity. Use --debug for full debug logs.')
@@ -141,72 +126,22 @@ class CLIParser(argparse.ArgumentParser):
         if add_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS)
 
-    def add_subcmd_help(self):
-        """Add a new cmd `az help` in Parser. This shouldn't be called in __init__"""
-        main_sp = self._get_subparsers('', None)
-        main_sp.add_parser('help', add_help=True)
-
-    def load_commands(self, commands, sp):
-        """
-        Load Commands in the same command group to the parser.
-        :param commands: commands to be loaded
-        :param sp: subparser that represents the command group
-        """
-        for name, command in commands.items():
-            parser = sp.add_parser(name.split()[-1], add_help=True, parents=self.parents)
-            for param in command['parameters']:
-                kwargs = {
-                    'choices': param.get('choices'),
-                    'nargs': param.get('nargs'),
-                    'dest': param.get('name'),
-                    'default': param.get('default'),
-                    'type': self.convert_type(param.get('type')) if param.get('type') else None,
-                }
-                if 'required' in param and len(param['options']) > 0:
-                    kwargs['required'] = param['required']
-                parser.add_argument(*param['options'], **kwargs)
-
-
-    def load_sub_groups(self, sub_groups, sp):
-        """
-        Load commands and subgroups in a set of subgroups sharing the same parent command group
-        :param sub_groups: subgroups to be loaded
-        :param sp: subparser that represents the command group
-        :return:
-        """
-        for name, sub_group in sub_groups.items():
-            nsp = self._get_subparsers(name, sp)
-            if 'commands' in sub_group:
-                self.load_commands(sub_group['commands'], nsp)
-            if 'sub_groups' in sub_group:
-                self.load_sub_groups(sub_group['sub_groups'], nsp)
-
     def load_meta(self, meta):
         """
         Load metadata of a module
         :param meta: loaded metadata dict
         """
-        main_sp = self._get_subparsers('', None)
-        self.load_commands(meta['commands'], main_sp)
-        self.load_sub_groups(meta['sub_groups'], main_sp)
-
-    def _get_subparsers(self, name, parent_sp):
-        """
-        Get a subparsers action of a parent subparsers action.\n
-        Use the command group name as cache key to avoid Command Overwriting in same command group in different module.
-        :param name: command group name of regarding subparsers action
-        :param parent_sp: the parent subparsers action
-        :return: the existing or new subparsers action corresponding to the name
-        """
-        sp = self.subparsers.get(name)
-        if not sp:
-            if parent_sp:
-                parser = parent_sp.add_parser(name.split()[-1], add_help=True, parents=self.parents)
-            else:
-                parser = self
-            sp = parser.add_subparsers()
-            self.subparsers[name] = sp
-        return sp
+        for param in meta['parameters']:
+            kwargs = {
+                'choices': param.get('choices'),
+                'nargs': param.get('nargs'),
+                'dest': param.get('name'),
+                'default': param.get('default'),
+                'type': self.convert_type(param.get('type')) if param.get('type') else None,
+            }
+            if 'required' in param and len(param['options']) > 0:
+                kwargs['required'] = param['required']
+            self.add_argument(*param['options'], **kwargs)
 
     def error(self, message: str) -> NoReturn:
         """
@@ -214,13 +149,3 @@ class CLIParser(argparse.ArgumentParser):
         :param message: error message
         """
         raise ParserFailureException(message)
-
-
-if __name__ == "__main__":
-    metas = load_from_disk("2.50.0")
-    global_parser = CLIParser.create_global_parser()
-    parser = CLIParser(prog='az', parents=[global_parser], add_help=True)
-    parser.add_subcmd_help()
-    for meta in metas.values():
-        parser.load_meta(meta)
-    result = parser.parse_args(['vm', 'create', '-n', 'n', '--resource-group', 'g', '--unknown'])

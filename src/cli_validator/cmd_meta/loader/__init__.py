@@ -34,16 +34,14 @@ def download_blob(url: str, target_path: str):
         raise ResourceNotExistException(e.message)
 
 
-def fetch_data(version: str, target_dir: str = './cmd_meta'):
+def fetch_metas(version: str, target_dir: str = './cmd_meta'):
     """
     Fetch `cmd-metadata-per-version` from Azure Blob
     :param version: version num of `azure-cli`
     :param target_dir: root directory to store downloaded data
     """
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
     if not os.path.exists(f'{target_dir}/azure-cli-{version}'):
-        os.mkdir(f'{target_dir}/azure-cli-{version}')
+        os.makedirs(f'{target_dir}/azure-cli-{version}')
     download_blob(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/index.txt',
                   f'{target_dir}/azure-cli-{version}/index.txt')
     with open(f'{target_dir}/azure-cli-{version}/index.txt', 'r', encoding='utf-8') as f:
@@ -56,7 +54,7 @@ def fetch_data(version: str, target_dir: str = './cmd_meta'):
                 logger.error(f'`azure-cli-{version}/{file_name}` not Found', e)
 
 
-def load_from_disk(version: str, meta_dir: str = './cmd_meta'):
+def load_metas_from_disk(version: str, meta_dir: str = './cmd_meta'):
     """
     Load Command Metadata from local disk
     :param version: version number of `azure-cli`
@@ -65,15 +63,58 @@ def load_from_disk(version: str, meta_dir: str = './cmd_meta'):
     """
     if not os.path.exists(f'{meta_dir}/azure-cli-{version}/index.txt'):
         return None
-    meta = {}
+    metas = {}
     with open(f'{meta_dir}/azure-cli-{version}/index.txt', 'r', encoding='utf-8') as f:
         for file_name in f.readlines():
             file_name = file_name.strip(' \n')
             try:
                 with open(f'{meta_dir}/azure-cli-{version}/{file_name}', 'r', encoding='utf-8') as meta_f:
-                    meta[file_name] = json.load(meta_f)
+                    metas[file_name] = json.load(meta_f)
             except (FileNotFoundError, JSONDecodeError) as e:
                 logger.error(f'Loading meta data in {file_name} failed: {e}')
+    return metas
+
+
+def load_metas(version: str, meta_dir: str = './cmd_meta'):
+    """
+    Load Command Metadata from local cache, fetch from Blob if not found
+    :param version: version of `azure-cli` to be loaded
+    :param meta_dir: root directory to cache Command Metadata
+    :return: list of command metadata
+    """
+    metas = load_metas_from_disk(version, meta_dir)
+    if not metas:
+        fetch_metas(version, meta_dir)
+        metas = load_metas_from_disk(version, meta_dir)
+    return metas
+
+
+def fetch_meta(version: str, module: str, target_dir: str = './cmd_meta'):
+    if not os.path.exists(f'{target_dir}/azure-cli-{version}'):
+        os.makedirs(f'{target_dir}/azure-cli-{version}')
+    file_name = f'az_{module}_meta.json'
+    try:
+        download_blob(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/{file_name}',
+                      f'{target_dir}/azure-cli-{version}/{file_name}')
+    except ResourceNotExistException as e:
+        logger.error(f'`azure-cli-{version}/{file_name}` not Found', e)
+
+
+def load_meta_from_disk(version: str, module: str, meta_dir: str = './cmd_meta'):
+    file_name = f'az_{module}_meta.json'
+    try:
+        with open(f'{meta_dir}/azure-cli-{version}/{file_name}', 'r', encoding='utf-8') as meta_f:
+            return json.load(meta_f)
+    except (FileNotFoundError, JSONDecodeError) as e:
+        logger.error(f'Loading meta data in {file_name} failed: {e}')
+    return None
+
+
+def load_meta(version: str, module: str, meta_dir: str = './cmd_meta'):
+    meta = load_meta_from_disk(version, module, meta_dir)
+    if not meta:
+        fetch_meta(version, module, meta_dir)
+        meta = load_meta_from_disk(version, module, meta_dir)
     return meta
 
 
@@ -91,20 +132,20 @@ def clear(version: Optional[str], meta_dir: str = './cmd_meta'):
             shutil.rmtree(meta_dir)
 
 
-def load_metas(version: str, meta_dir: str = './cmd_meta'):
-    """
-    Load Command Metadata from local cache, fetch from Blob if not found
-    :param version: version of `azure-cli` to be loaded
-    :param meta_dir: root directory to cache Command Metadata
-    :return: list of command metadata
-    """
-    metas = load_from_disk(version, meta_dir)
-    if not metas:
-        fetch_data(version, meta_dir)
-    metas = load_from_disk(version, meta_dir)
-    return metas
+def _attach_sub_group_to_node(sub_group, tree_node, module):
+    for name, command in sub_group["commands"].items():
+        tree_node[name.split()[-1]] = module
+    for name, sub_group in sub_group["sub_groups"].items():
+        name = name.split()[-1]
+        if name not in tree_node:
+            tree_node[name] = {}
+        next_tree_node = tree_node[name]
+        _attach_sub_group_to_node(sub_group, next_tree_node, module)
 
 
-if __name__ == "__main__":
-    fetch_data("2.51.0")
-    # load_from_disk("2.51.0")
+def build_command_tree(metas):
+    tree = {}
+    for meta in metas.values():
+        module = meta["module_name"]
+        _attach_sub_group_to_node(meta, tree, module)
+    return tree
