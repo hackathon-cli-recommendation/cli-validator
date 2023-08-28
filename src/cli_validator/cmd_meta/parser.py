@@ -159,10 +159,11 @@ class CLIParser(argparse.ArgumentParser):
                     'choices': param.get('choices'),
                     'nargs': param.get('nargs'),
                     'dest': param.get('name'),
-                    'required': param.get('required') and len(param['options']) > 0,
                     'default': param.get('default'),
-                    'type': self.convert_type(param.get('type')),
+                    'type': self.convert_type(param.get('type')) if param.get('type') else None,
                 }
+                if 'required' in param and len(param['options']) > 0:
+                    kwargs['required'] = param['required']
                 parser.add_argument(*param['options'], **kwargs)
 
 
