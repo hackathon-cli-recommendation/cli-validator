@@ -10,29 +10,29 @@ class ValidateFailureException(Exception):
 
 class ParserFailureException(ValidateFailureException):
     def __init__(self, msg):
-        super(msg)
+        super().__init__(msg)
 
 
 class ParserHelpException(ValidateFailureException):
     def __init__(self):
-        super('The user inputs `-h/--help`. This is not a real exception.')
+        super().__init__('The user inputs `-h/--help`. This is not a real exception.')
 
 
 class EmptyCommandException(ValidateFailureException):
     def __init__(self):
-        super('The input command is empty.')
+        super().__init__('The input command is empty.')
 
 
 class NonAzCommandException(ValidateFailureException):
     def __init__(self):
-        super('The input command is not an Azure CLI command.')
+        super().__init__('The input command is not an Azure CLI command.')
 
 
 class CommandTreeCorruptedException(ValidateFailureException):
     def __init__(self, tree_type):
-        super(f'The {tree_type} CommandTree is Corrupted. Fail to find parent module/extension of command.')
+        super().__init__(f'The {tree_type} CommandTree is Corrupted. Fail to find parent module/extension of command.')
 
 
 class UnknownCommandException(ValidateFailureException):
     def __init__(self, command):
-        super(f'Unknown Command: {command}.')
+        super().__init__(f'Unknown Command: {command}.')
