@@ -20,6 +20,10 @@ class LoaderTestCase(unittest.TestCase):
         meta = load_metas_from_disk('2.50.0', self.meta_data_dir)
         self.assertNotEqual(len(meta), 0)
 
+    def test_load_metas(self):
+        meta = load_metas('2.50.0', self.meta_data_dir)
+        self.assertNotEqual(len(meta), 0)
+
     def test_fetch_not_existed(self):
         with self.assertRaises(ResourceNotExistException):
             fetch_metas('2.50.10', self.meta_data_dir)
