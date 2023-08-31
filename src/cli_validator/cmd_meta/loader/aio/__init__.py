@@ -1,8 +1,6 @@
 import asyncio
-import json
 import logging
 import os
-from json import JSONDecodeError
 
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob.aio import BlobClient
