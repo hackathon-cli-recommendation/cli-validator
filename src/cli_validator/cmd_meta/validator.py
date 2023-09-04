@@ -3,7 +3,6 @@ from cli_validator.cmd_meta.parser import CLIParser
 from cli_validator.cmd_tree import parse_command
 from cli_validator.exceptions import ValidateFailureException
 
-
 class CommandMetaValidator(object):
     """A validator using Command Metadata generated from breaking change tool"""
 
