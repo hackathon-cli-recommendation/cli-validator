@@ -1,6 +1,5 @@
 import argparse
 from typing import NoReturn
-
 from cli_validator.exceptions import ParserHelpException, UnknownTypeException, ParserFailureException
 
 
