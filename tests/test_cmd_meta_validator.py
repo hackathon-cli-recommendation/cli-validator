@@ -1,5 +1,4 @@
 from unittest import TestCase
-
 from cli_validator.cmd_meta.validator import CommandMetaValidator
 from cli_validator.exceptions import ParserFailureException, ValidateFailureException
 
