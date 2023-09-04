@@ -3,6 +3,7 @@ from cli_validator.cmd_meta.parser import CLIParser
 from cli_validator.cmd_tree import parse_command
 from cli_validator.exceptions import ValidateFailureException
 
+
 class CommandMetaValidator(object):
     """A validator using Command Metadata generated from breaking change tool"""
 
@@ -26,6 +27,7 @@ class CommandMetaValidator(object):
         meta = self.load_command_meta(cmd.signature, cmd.module)
         parser = self.build_parser(meta)
         namespace = parser.parse_args(cmd.parameters)
+        missing_args = []
 
         if namespace.ids is not None:
             for param in meta['parameters']:
@@ -33,15 +35,14 @@ class CommandMetaValidator(object):
                     continue
                 else:
                     if 'required' in param and namespace.__getattribute__(param['name']) is None:
-                        raise ValidateFailureException('Some arguments are required)
-                    else:
-                        continue
+                        missing_args.append('/'.join(param['options']))
         else:
             for param in meta['parameters']:
                 if 'required' in param and namespace.__getattribute__(param['name']) is None:
-                    raise ValidateFailureException('Some arguments are required)
-                else:
-                    continue
+                    missing_args.append('/'.join(param['options']))
+
+        if len(missing_args) > 0:
+            raise ValidateFailureException(f"the following arguments are required: {', '.join(missing_args)} ")
 
     def load_command_meta(self, signature, module):
         """
@@ -60,3 +61,4 @@ class CommandMetaValidator(object):
         parser = CLIParser(parents=[self._global_parser], add_help=False)
         parser.load_meta(meta)
         return parser
+
