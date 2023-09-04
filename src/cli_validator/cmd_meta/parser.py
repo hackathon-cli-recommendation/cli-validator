@@ -1,6 +1,5 @@
 import argparse
 from typing import NoReturn
-
 from cli_validator.exceptions import ParserHelpException, UnknownTypeException, ParserFailureException
 
 
@@ -139,9 +138,8 @@ class CLIParser(argparse.ArgumentParser):
                 'default': param.get('default'),
                 'type': self.convert_type(param.get('type')) if param.get('type') else None,
             }
-            if 'required' in param and len(param['options']) > 0:
-                kwargs['required'] = param['required']
             self.add_argument(*param['options'], **kwargs)
+        self.add_argument('--ids', dest='ids')
 
     def error(self, message: str) -> NoReturn:
         """
