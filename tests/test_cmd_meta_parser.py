@@ -1,6 +1,7 @@
 import unittest
 
 from cli_validator.cmd_meta.parser import CLIParser, ParserFailureException
+from cli_validator.exceptions import ParserHelpException
 
 
 class ParserTestCase(unittest.TestCase):
@@ -50,6 +51,10 @@ class ParserTestCase(unittest.TestCase):
             self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--unknown'])
         with self.assertRaisesRegex(ParserFailureException, r'argument --query: invalid jmespath_type value:.*'):
             self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--query', 'dfa.fad[0]daf'])
+
+    def test_help(self):
+        with self.assertRaises(ParserHelpException):
+            self.parser.parse_args(['--help'])
 
 
 if __name__ == '__main__':

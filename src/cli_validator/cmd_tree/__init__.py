@@ -18,6 +18,8 @@ def parse_command(command_tree, command, comments):
         raise EmptyCommandException()
     elif args[0] != 'az':
         raise NonAzCommandException()
+    elif args[1] == 'help' and len(args) == 2:
+        return CommandInfo(None, ['help'], [])
     parameters = args[1:]
     signature = []
     cur_node = command_tree
@@ -33,6 +35,8 @@ def parse_command(command_tree, command, comments):
                 cur_node = cur_node[part]
             else:
                 raise CommandTreeCorruptedException('Core')
+        elif parameters[0] in ['--help', '-h'] and len(parameters) == 1:
+            return CommandInfo(None, signature, parameters)
         else:
             raise UnknownCommandException(command)
     if not module:

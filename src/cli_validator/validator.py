@@ -13,10 +13,18 @@ class CLIValidator(object):
         self.ext_command_tree = load_command_tree('https://aka.ms/azExtCmdTree',
                                                   os.path.join(cache_path, 'ext_command_tree.json'))
 
-    def validate_command(self, command, comments=True):
+    def validate_command(self, command, non_interactive=False, no_help=True, comments=True):
+        """
+        Validate an input command
+        :param command: to be validated
+        :param non_interactive: check `--yes` in a command with confirmation
+        :param no_help: reject commands with `--help`
+        :param comments: parse comments in the given command
+        :return:
+        """
         try:
             try:
-                self.cmd_meta_validator.validate_command(command, comments)
+                self.cmd_meta_validator.validate_command(command, non_interactive, no_help, comments)
             except UnknownCommandException:
                 parse_command(self.ext_command_tree, command, comments)
         except ValidateFailureException as e:

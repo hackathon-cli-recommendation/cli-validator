@@ -141,6 +141,8 @@ class CLIParser(argparse.ArgumentParser):
             }
             if 'required' in param and len(param['options']) > 0:
                 kwargs['required'] = param['required']
+            if param['name'] == 'yes':
+                kwargs['action'] = 'store_true'
             self.add_argument(*param['options'], **kwargs)
 
     def error(self, message: str) -> NoReturn:

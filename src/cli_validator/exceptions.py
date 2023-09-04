@@ -13,9 +13,21 @@ class ParserFailureException(ValidateFailureException):
         super().__init__(msg)
 
 
+class ValidateHelpException(ValidateFailureException):
+
+    def __init__(self):
+        super().__init__('The input command is help or `--help`.')
+
+
 class ParserHelpException(ValidateFailureException):
     def __init__(self):
         super().__init__('The user inputs `-h/--help`. This is not a real exception.')
+
+
+class ConfirmationNoYesException(ValidateFailureException):
+
+    def __init__(self):
+        super().__init__('`--yes` is required for commands in non-interactive mode.')
 
 
 class EmptyCommandException(ValidateFailureException):
