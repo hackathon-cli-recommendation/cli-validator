@@ -48,6 +48,8 @@ class ParserTestCase(unittest.TestCase):
         self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME'])
         with self.assertRaisesRegex(ParserFailureException, r'.*unrecognized arguments.*--unknown'):
             self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--unknown'])
+        with self.assertRaisesRegex(ParserFailureException, r'argument --query: invalid jmespath_type value:.*'):
+            self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--query', 'dfa.fad[0]daf'])
 
 
 if __name__ == '__main__':

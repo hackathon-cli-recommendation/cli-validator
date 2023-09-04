@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import logging
 import os
@@ -84,7 +85,13 @@ def load_metas(version: str, meta_dir: str = './cmd_meta'):
     """
     metas = load_metas_from_disk(version, meta_dir)
     if not metas:
-        fetch_metas(version, meta_dir)
+        if importlib.util.find_spec('aiohttp') is not None:
+            import asyncio
+            from .aio import fetch_metas as aio_fetch_metas
+            asyncio.run(aio_fetch_metas(version, meta_dir))
+        else:
+            logger.info('Module \'aiohttp\' is not installed. Downloading metadata sequentially now.')
+            fetch_metas(version, meta_dir)
         metas = load_metas_from_disk(version, meta_dir)
     return metas
 

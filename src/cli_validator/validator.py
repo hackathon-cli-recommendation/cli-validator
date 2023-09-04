@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from cli_validator import Result
 from cli_validator.cmd_meta.validator import CommandMetaValidator
