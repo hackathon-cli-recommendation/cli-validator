@@ -41,7 +41,7 @@ class CommandMetaValidator(object):
             else:
                 return
         if 'confirmation' in meta and meta['confirmation']:
-            if non_interactive and 'yes' in namespace and namespace.yes:
+            if non_interactive and not ('yes' in namespace and namespace.yes):
                 raise ConfirmationNoYesException()
 
     def load_command_meta(self, signature, module):

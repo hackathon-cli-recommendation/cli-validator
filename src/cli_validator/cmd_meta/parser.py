@@ -133,12 +133,15 @@ class CLIParser(argparse.ArgumentParser):
         """
         for param in meta['parameters']:
             kwargs = {
-                'choices': param.get('choices'),
-                'nargs': param.get('nargs'),
                 'dest': param.get('name'),
                 'default': param.get('default'),
-                'type': self.convert_type(param.get('type')) if param.get('type') else None,
             }
+            if 'choices' in param:
+                kwargs['choices'] = param['choices']
+            if 'nargs' in param:
+                kwargs['nargs'] = param['nargs']
+            if 'type' in param:
+                kwargs['type'] = self.convert_type(param.get('type')) if param.get('type') else None
             if 'required' in param and len(param['options']) > 0:
                 kwargs['required'] = param['required']
             if param['name'] == 'yes':
