@@ -139,6 +139,7 @@ class CLIParser(argparse.ArgumentParser):
                 'type': self.convert_type(param.get('type')) if param.get('type') else None,
             }
             self.add_argument(*param['options'], **kwargs)
+        self.add_argument('--ids', dest='ids')
 
     def error(self, message: str) -> NoReturn:
         """
