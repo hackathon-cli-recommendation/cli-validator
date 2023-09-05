@@ -39,7 +39,7 @@ class ParserTestCase(unittest.TestCase):
         }
         global_parser = CLIParser.create_global_parser()
         self.parser = CLIParser(prog='az', parents=[global_parser], add_help=True)
-        self.parser.load_meta(meta)
+        self.parser.load_meta(meta, check_required=True)
 
     def test_vm_create(self):
         with self.assertRaisesRegex(ParserFailureException, r'.*the following arguments are required.*-g.*'):

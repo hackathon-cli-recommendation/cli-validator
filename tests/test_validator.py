@@ -14,3 +14,7 @@ class CLIValidatorTestCase(TestCase):
             '--admin-username vmtest --admin-password Test123456789#'])
         for res in result:
             self.assertTrue(res.no_error)
+        self.assertFalse(self.validator.validate_command(
+            'az vmss update --resource-group <resource-group-name> --name <vmss-name> '
+            '--image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest --security-type TrustedLaunch '
+            '--enable-vtpm true').no_error)
