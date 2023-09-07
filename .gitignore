@@ -4,3 +4,5 @@ dist/
 /tests/test_meta/
 /tests/test_cache/
 venv/
+__pycache__/
+.pytest_cache/

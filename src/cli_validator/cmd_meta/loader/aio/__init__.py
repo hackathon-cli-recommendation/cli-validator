@@ -35,11 +35,8 @@ async def try_download_meta(version: str, file_name: str, target_dir: str):
 
 
 async def fetch_metas(version: str, target_dir: str = './cmd_meta'):
-    # TODO: fix `RuntimeError: Event loop is closed`
-    if not os.path.exists(target_dir):
-        os.mkdir(target_dir)
     if not os.path.exists(f'{target_dir}/azure-cli-{version}'):
-        os.mkdir(f'{target_dir}/azure-cli-{version}')
+        os.makedirs(f'{target_dir}/azure-cli-{version}')
     await download_blob(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/index.txt',
                         f'{target_dir}/azure-cli-{version}/index.txt')
     tasks = []

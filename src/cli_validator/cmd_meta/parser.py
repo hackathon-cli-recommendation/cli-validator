@@ -125,19 +125,27 @@ class CLIParser(argparse.ArgumentParser):
         if add_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS)
 
-    def load_meta(self, meta):
+    def load_meta(self, meta, check_required=False):
         """
         Load metadata of a module
+        :param check_required: load the `required` field into the parser
         :param meta: loaded metadata dict
         """
         for param in meta['parameters']:
             kwargs = {
-                'choices': param.get('choices'),
-                'nargs': param.get('nargs'),
                 'dest': param.get('name'),
                 'default': param.get('default'),
-                'type': self.convert_type(param.get('type')) if param.get('type') else None,
             }
+            if 'choices' in param:
+                kwargs['choices'] = param['choices']
+            if 'nargs' in param:
+                kwargs['nargs'] = param['nargs']
+            if 'type' in param:
+                kwargs['type'] = self.convert_type(param.get('type')) if param.get('type') else None
+            if check_required and 'required' in param and len(param['options']) > 0:
+                kwargs['required'] = param['required']
+            if param['name'] == 'yes':
+                kwargs['action'] = 'store_true'
             self.add_argument(*param['options'], **kwargs)
         self.add_argument('--ids', dest='ids')
 
