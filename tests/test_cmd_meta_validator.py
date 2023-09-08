@@ -36,6 +36,9 @@ class TestCmdChangeValidator(TestCase):
         self.validator.validate_command('az group delete -n n -y', non_interactive=True)
         self.validator.validate_command('az group delete -n n --yes', non_interactive=True)
 
+    def test_shorthand_syntax(self):
+        self.validator.validate_command('az network route-table create -g g -n n --tag "{a:b,c:d}" --tag e=f')
+
     def test_validate_correct_command_with_no_ids(self):
         self.validator.validate_command('az storage account show -g xxxxx -n xxxxx')
         
@@ -44,9 +47,10 @@ class TestCmdChangeValidator(TestCase):
 
     def test_validate_correct_command_with_ids_and_separated_parameter_with_id_part(self):
         self.validator.validate_command('az storage account show --ids /subscriptions/xxxxx/resourceGroups/xxxxx/providers/xxxxx/storageAccounts/xxxxx -n xxxxx')
-    
+
     def test_validate_correct_command_with_ids_and_required_parameter(self):
-        self.validator.validate_command('az webapp create --ids /subscriptions/xxxxx/resourceGroups/xxxxx/xxxxx -p xxxxx')
+        with self.assertRaisesRegex(ParserFailureException, r'unrecognized arguments: --ids .*'):
+            self.validator.validate_command('az webapp create --ids /subscriptions/xxxxx/resourceGroups/xxxxx/xxxxx -p xxxxx')
     
     def test_validate_incorrect_command_with_required_parameters_needed(self):
         with self.assertRaises(ValidateFailureException):

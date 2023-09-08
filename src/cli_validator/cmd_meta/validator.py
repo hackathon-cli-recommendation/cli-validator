@@ -41,20 +41,13 @@ class CommandMetaValidator(object):
                 raise ValidateHelpException() from e
             else:
                 return
+
         missing_args = []
-
-        if namespace.ids is not None:
-            for param in meta['parameters']:
-                if 'id_part' in param:
-                    continue
-                else:
-                    if 'required' in param and namespace.__getattribute__(param['name']) is None:
-                        missing_args.append('/'.join(param['options']))
-        else:
-            for param in meta['parameters']:
-                if 'required' in param and namespace.__getattribute__(param['name']) is None:
-                    missing_args.append('/'.join(param['options']))
-
+        for param in meta['parameters']:
+            if 'ids' in namespace and 'id_part' in param:
+                continue
+            if param.get('required', False) and namespace.__getattribute__(param['name']) is None:
+                missing_args.append('/'.join(param['options']))
         if len(missing_args) > 0:
             raise ValidateFailureException(f"the following arguments are required: {', '.join(missing_args)} ")
 

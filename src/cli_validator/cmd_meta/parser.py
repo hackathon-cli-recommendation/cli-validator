@@ -147,7 +147,12 @@ class CLIParser(argparse.ArgumentParser):
             if param['name'] == 'yes':
                 kwargs['action'] = 'store_true'
             self.add_argument(*param['options'], **kwargs)
-        self.add_argument('--ids', dest='ids')
+        if meta['name'].split()[-1] == 'create':
+            return
+        id_parts = [param.get('id_part') for param in meta['parameters']]
+        if 'name' not in id_parts and 'resource_name' not in id_parts:
+            return
+        self.add_argument('--ids', dest='ids', nargs='+')
 
     def error(self, message: str) -> NoReturn:
         """
