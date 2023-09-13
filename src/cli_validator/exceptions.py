@@ -24,6 +24,13 @@ class ParserHelpException(ValidateFailureException):
         super().__init__('The user inputs `-h/--help`. This is not a real exception.')
 
 
+class ChoiceNotExistsException(ValidateFailureException):
+
+    def __init__(self, argument, param, choices):
+        super().__init__("argument {}: invalid choice: '{}' (choose from {})".format(
+            "/".join(argument), param, ', '.join([f"'{c}'" for c in choices])))
+
+
 class ConfirmationNoYesException(ValidateFailureException):
 
     def __init__(self):
@@ -48,3 +55,8 @@ class CommandTreeCorruptedException(ValidateFailureException):
 class UnknownCommandException(ValidateFailureException):
     def __init__(self, command):
         super().__init__(f'Unknown Command: {command}.')
+
+
+class MissingSubCommandException(UnknownCommandException):
+    def __init__(self, command):
+        super().__init__(command)
