@@ -1,6 +1,9 @@
 import argparse
+import re
 from typing import NoReturn
-from cli_validator.exceptions import ParserHelpException, UnknownTypeException, ParserFailureException
+
+from cli_validator.cmd_meta.util import support_ids
+from cli_validator.exceptions import ParserHelpException, ParserFailureException, ChoiceNotExistsException
 
 
 class CustomHelpAction(argparse.Action):
@@ -41,6 +44,52 @@ class CLIParser(argparse.ArgumentParser):
         'tsv',
         'none',
     }
+    TYPE_MAP = {
+        'String': str,
+        'str': str,
+        'List<String>': str,
+        'Boolean': bool,
+        'bool': bool,
+        'List<Boolean>': bool,
+        'Int': int,
+        'int': int,
+        'List<Int>': int,
+        'Float': float,
+        'float': float,
+        'List<Float>': float,
+        'custom_type': str,
+        'file_type': str,
+        'Object': str,
+        'Dict<String,String>': str,
+        'List<Object>': str,
+        'Dict<String,Object>': str,
+        'Dict<String,List<String>>': str,
+        'Duration': int,
+        'Date': str,
+        'Time': str,
+        'DateTime': str,
+        'Password': str,
+        'GUID/UUID': str,
+    }
+
+    PLACEHOLDER_REFEX = (r'(\$[a-zA-Z0-9_]*$)|'
+                         r'(\$\{[a-zA-Z0-9_ -\.\[\]]*\}$)|'
+                         r'(\<[a-zA-Z0-9_]*\>$)|'
+                         r'(\<\<[a-zA-Z0-9_ -]*\>\>$)')
+
+    @classmethod
+    def placeholder_type(cls, options, back_type, choices=None):
+        def type_convert(raw_query):
+            if re.match(cls.PLACEHOLDER_REFEX, raw_query):
+                return raw_query
+            else:
+                value = back_type(raw_query)
+                if choices and value not in choices:
+                    raise ChoiceNotExistsException(options, value, choices)
+                return value
+        # Display the correct type name in error message
+        setattr(type_convert, '__name__', back_type.__name__)
+        return type_convert
 
     @staticmethod
     def jmespath_type(raw_query):
@@ -56,64 +105,6 @@ class CLIParser(argparse.ArgumentParser):
             # Raise a ValueError which argparse can handle
             raise ValueError from ex
 
-    @staticmethod
-    def convert_type(type_name):
-        if type_name == 'String' or type_name == 'str' or type_name == 'List<String>':
-            return str
-        elif type_name == 'Boolean' or type_name == 'bool' or type_name == 'List<Boolean>':
-            return bool
-        elif type_name == 'Int' or type_name == 'int' or type_name == 'List<Int>':
-            return int
-        elif type_name == 'Float' or type_name == 'float' or type_name == 'List<Float>':
-            return float
-        elif type_name == 'custom_type':  # location
-            return str
-        elif type_name == 'file_type':
-            return str
-        elif type_name == 'Object':  # eventhubs namespace update --identity
-            return str
-        elif type_name == 'Dict<String,String>':  # tag(use shorthand syntax)
-            return str
-        elif type_name == 'List<Object>':  # eventhubs namespace update --identity
-            return str
-        elif type_name == 'Dict<String,Object>':  # monitor log-analytics cluster create --user-assigned
-            return str
-        elif type_name == 'Dict<String,List<String>>':
-            return str
-        elif type_name == 'Duration':  # monitor autoscale show-predictive-metric --interval
-            return int
-        elif type_name == 'DateTime':  # monitor autoscale show-predictive-metric --interval
-            return str
-        elif type_name == 'Password':  # monitor autoscale show-predictive-metric --interval
-            return str
-        else:
-            raise UnknownTypeException(type_name)
-
-    @staticmethod
-    def create_global_parser():
-        """
-        Create a global Argument Parser for Global Arguments. This should be the parent of all subcommands.
-        """
-        global_parser = argparse.ArgumentParser(add_help=False)
-        arg_group = global_parser.add_argument_group('global', 'Global Arguments')
-        arg_group.add_argument(CLIParser.VERBOSE_FLAG, dest='_log_verbosity_verbose', action='store_true',
-                               help='Increase logging verbosity. Use --debug for full debug logs.')
-        arg_group.add_argument(CLIParser.DEBUG_FLAG, dest='_log_verbosity_debug', action='store_true',
-                               help='Increase logging verbosity to show all debug logs.')
-        arg_group.add_argument(CLIParser.ONLY_SHOW_ERRORS_FLAG, dest='_log_verbosity_only_show_errors',
-                               action='store_true',
-                               help='Only show errors, suppressing warnings.')
-        arg_group.add_argument('--output', '-o', dest=CLIParser.OUTPUT_DEST,
-                               choices=list(CLIParser._OUTPUT_FORMAT_DICT),
-                               default='json',
-                               help='Output format',
-                               type=str.lower)
-        arg_group.add_argument('--query', dest='_jmespath_query', metavar='JMESPATH',
-                               help='JMESPath query string. See http://jmespath.org/ for more'
-                                    ' information and examples.',
-                               type=CLIParser.jmespath_type)
-        return global_parser
-
     def __init__(self, **kwargs):
         self.subparsers = {}
         self.parents = kwargs.get('parents', [])
@@ -125,34 +116,57 @@ class CLIParser(argparse.ArgumentParser):
         if add_help:
             self.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS)
 
-    def load_meta(self, meta, check_required=False):
+    def load_meta(self, meta, placeholder=True, check_required=False):
         """
         Load metadata of a module
+        :param placeholder: allow placeholder like <ResourceName>, $ResourceName as field value
         :param check_required: load the `required` field into the parser
         :param meta: loaded metadata dict
         """
+        self._add_global(placeholder)
         for param in meta['parameters']:
             kwargs = {
                 'dest': param.get('name'),
                 'default': param.get('default'),
             }
-            if 'choices' in param:
+            if 'choices' in param and not placeholder:
                 kwargs['choices'] = param['choices']
             if 'nargs' in param:
                 kwargs['nargs'] = param['nargs']
             if 'type' in param:
-                kwargs['type'] = self.convert_type(param.get('type')) if param.get('type') else None
+                if placeholder:
+                    kwargs['type'] = self.placeholder_type(param['options'], self.TYPE_MAP.get(param['type'], str))
+                else:
+                    kwargs['type'] = self.TYPE_MAP.get(param['type'], str)
             if check_required and 'required' in param and len(param['options']) > 0:
                 kwargs['required'] = param['required']
             if param['name'] == 'yes':
                 kwargs['action'] = 'store_true'
             self.add_argument(*param['options'], **kwargs)
-        if meta['name'].split()[-1] == 'create':
-            return
-        id_parts = [param.get('id_part') for param in meta['parameters']]
-        if 'name' not in id_parts and 'resource_name' not in id_parts:
-            return
-        self.add_argument('--ids', dest='ids', nargs='+')
+        if support_ids(meta):
+            self.add_argument('--ids', dest='ids', nargs='+')
+
+    def _add_global(self, placeholder=True):
+        """
+        Create a global Argument Parser for Global Arguments. This should be the parent of all subcommands.
+        """
+        arg_group = self.add_argument_group('global', 'Global Arguments')
+        arg_group.add_argument(CLIParser.VERBOSE_FLAG, dest='_log_verbosity_verbose', action='store_true',
+                               help='Increase logging verbosity. Use --debug for full debug logs.')
+        arg_group.add_argument(CLIParser.DEBUG_FLAG, dest='_log_verbosity_debug', action='store_true',
+                               help='Increase logging verbosity to show all debug logs.')
+        arg_group.add_argument(CLIParser.ONLY_SHOW_ERRORS_FLAG, dest='_log_verbosity_only_show_errors',
+                               action='store_true',
+                               help='Only show errors, suppressing warnings.')
+        arg_group.add_argument('--output', '-o', dest=CLIParser.OUTPUT_DEST,
+                               choices=list(CLIParser._OUTPUT_FORMAT_DICT) if not placeholder else None,
+                               default='json',
+                               help='Output format',
+                               type=self.placeholder_type(['--query'], str.lower, choices=list(CLIParser._OUTPUT_FORMAT_DICT)))
+        arg_group.add_argument('--query', dest='_jmespath_query', metavar='JMESPATH',
+                               help='JMESPath query string. See http://jmespath.org/ for more'
+                                    ' information and examples.',
+                               type=self.placeholder_type(['--query'], CLIParser.jmespath_type))
 
     def error(self, message: str) -> NoReturn:
         """

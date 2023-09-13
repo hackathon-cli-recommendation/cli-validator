@@ -1,39 +1,57 @@
+from typing import List
+
 from cli_validator.cmd_meta.loader import load_metas, build_command_tree
 from cli_validator.cmd_meta.parser import CLIParser
+from cli_validator.cmd_meta.util import support_ids
 from cli_validator.cmd_tree import parse_command
-from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, ValidateFailureException
+from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
+    ValidateFailureException, MissingSubCommandException
 
 
 class CommandMetaValidator(object):
     """A validator using Command Metadata generated from breaking change tool"""
 
-    def __init__(self, version: str, cache_dir: str = './cmd_meta'):
+    GLOBAL_PARAMETERS = [CLIParser.VERBOSE_FLAG, CLIParser.DEBUG_FLAG, CLIParser.ONLY_SHOW_ERRORS_FLAG,
+                         '--output', '-o', '--query']
+
+    def __init__(self, cache_dir: str = './cmd_meta'):
         """
-        :param version: the version of `azure-cli` that provides the metadata
         :param cache_dir: cache directory that store the downloaded metadata
         """
-        self.metas = load_metas(version, cache_dir)
-        self.command_tree = build_command_tree(self.metas)
-        self._global_parser = CLIParser.create_global_parser()
+        self.cache_dir = cache_dir
+        self.metas = None
+        self.command_tree = None
 
-    def validate_command(self, command, non_interactive=False, no_help=True, comments=True):
+    def load_metas(self, version: str):
+        """
+        :param version: the version of `azure-cli` that provides the metadata
+        """
+        self.metas = load_metas(version, self.cache_dir)
+        self.command_tree = build_command_tree(self.metas)
+
+    async def load_metas_async(self, version: str):
+        from cli_validator.cmd_meta.loader.aio import load_metas
+        self.metas = await load_metas(version, self.cache_dir)
+        self.command_tree = build_command_tree(self.metas)
+
+    def validate_command(self, command, non_interactive=False, placeholder=True, no_help=True, comments=True):
         """
         Validate a command to check if the command is valid
         :param command: command to be validated
         :param non_interactive: check `--yes` in a command with confirmation
+        :param placeholder:
         :param no_help: reject commands with `--help`
         :param comments: whether parse comments in the given command
         :return: parsed namespace
         """
         cmd = parse_command(self.command_tree, command, comments)
-        # At present, only az command group --help will return a CommandInfo with module as None
         if cmd.module is None:
             if no_help:
                 raise ValidateHelpException()
             else:
                 return
         meta = self.load_command_meta(cmd.signature, cmd.module)
-        parser = self.build_parser(meta)
+        parser = self.build_parser(meta, placeholder)
         try:
             namespace = parser.parse_args(cmd.parameters)
         except ParserHelpException as e:
@@ -51,9 +69,56 @@ class CommandMetaValidator(object):
         if len(missing_args) > 0:
             raise ValidateFailureException(f"the following arguments are required: {', '.join(missing_args)} ")
 
-        if 'confirmation' in meta and meta['confirmation']:
-            if non_interactive and not ('yes' in namespace and namespace.yes):
-                raise ConfirmationNoYesException()
+        if meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
+            raise ConfirmationNoYesException()
+
+    def validate_separate_command(self, command_signature: str, parameters: List[str], non_interactive=False, no_help=True):
+        def handle_help():
+            if no_help:
+                raise ValidateHelpException()
+
+        try:
+            cmd = parse_command(self.command_tree, command_signature)
+            if cmd.module is None:
+                return handle_help()
+        except MissingSubCommandException as e:
+            if len(parameters) == 1 and parameters[0] in ['-h', '--help']:
+                return handle_help()
+            else:
+                raise e
+        meta = self.load_command_meta(cmd.signature, cmd.module)
+        unresolved = []
+        param_metas = {}
+        required = {}
+        for param in meta['parameters']:
+            for name in param['options']:
+                param_metas[name] = param
+            if param.get('required', False):
+                required[param['name']] = param
+        for param in parameters:
+            if param in param_metas:
+                param_meta = param_metas[param]
+                if param_meta.get('required', False) and param_meta['name'] in required:
+                    required.pop(param_meta['name'])
+            elif param == '--ids' and support_ids(meta):
+                for param_name in [param['name'] for param in meta['parameters'] if param.get('id_part')]:
+                    if param_name in required:
+                        required.pop(param_name)
+            elif param in ['--help', '-h']:
+                return handle_help()
+            elif param in self.GLOBAL_PARAMETERS:
+                continue
+            else:
+                unresolved.append(param)
+        if len(unresolved) > 0:
+            raise ValidateFailureException('unrecognized arguments: {}'.format(', '.join(unresolved)))
+        if len(required) > 0:
+            raise ValidateFailureException(
+                'the following arguments are required: {}'.format(
+                    ', '.join(['/'.join(param['options']) for param in required.values()])))
+
+        if meta.get('confirmation', False) and non_interactive and not ('--yes' in parameters or '-y' in parameters):
+            raise ConfirmationNoYesException()
 
     def load_command_meta(self, signature, module):
         """
@@ -68,8 +133,8 @@ class CommandMetaValidator(object):
             meta = meta['sub_groups'][' '.join(signature[:idx + 1])]
         return meta['commands'][' '.join(signature)]
 
-    def build_parser(self, meta):
-        parser = CLIParser(parents=[self._global_parser], add_help=True)
-        parser.load_meta(meta)
+    @staticmethod
+    def build_parser(meta, placeholder=True):
+        parser = CLIParser(add_help=True)
+        parser.load_meta(meta, placeholder=placeholder)
         return parser
-

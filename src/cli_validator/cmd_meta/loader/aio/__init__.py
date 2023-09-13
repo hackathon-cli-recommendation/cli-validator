@@ -5,7 +5,7 @@ import os
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob.aio import BlobClient
 
-from cli_validator.cmd_meta.loader import ResourceNotExistException
+from cli_validator.cmd_meta.loader import ResourceNotExistException, load_metas_from_disk
 
 BLOB_URL = 'https://azcmdchangemgmt.blob.core.windows.net'
 CONTAINER_NAME = 'cmd-metadata-per-version'
@@ -46,6 +46,20 @@ async def fetch_metas(version: str, target_dir: str = './cmd_meta'):
             tasks.append(asyncio.create_task(try_download_meta(version, file_name, target_dir)))
     if len(tasks) > 0:
         await asyncio.wait(tasks)
+
+
+async def load_metas(version: str, meta_dir: str = './cmd_meta'):
+    """
+    Load Command Metadata from local cache, fetch from Blob if not found
+    :param version: version of `azure-cli` to be loaded
+    :param meta_dir: root directory to cache Command Metadata
+    :return: list of command metadata
+    """
+    metas = load_metas_from_disk(version, meta_dir)
+    if not metas:
+        await fetch_metas(version, meta_dir)
+        metas = load_metas_from_disk(version, meta_dir)
+    return metas
 
 
 if __name__ == "__main__":

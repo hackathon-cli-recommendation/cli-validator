@@ -1,11 +1,12 @@
-from unittest import TestCase
+import unittest
 
 from cli_validator.validator import CLIValidator
 
 
-class CLIValidatorTestCase(TestCase):
-    def setUp(self):
-        self.validator = CLIValidator('2.51.0', 'test_cache')
+class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.validator = CLIValidator('test_cache')
+        await self.validator.load_metas_async("2.51.0")
 
     def test_validate(self):
         result = self.validator.validate([
