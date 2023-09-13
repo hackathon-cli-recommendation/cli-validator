@@ -79,3 +79,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
             self.validator.validate_separate_command('az webapp create', ['--ids', '-p'])
         with self.assertRaises(ValidateFailureException):
             self.validator.validate_command('az webapp create --ids /subscriptions/xxxxx/resourceGroups/xxxxx/xxxxx')
+
+    def test_global_parameter(self):
+        self.validator.validate_command('az group show -n qinkai-test -o tsv')
+        self.validator.validate_separate_command('az group show', ['-n', '-o'])

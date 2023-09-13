@@ -106,6 +106,8 @@ class CommandMetaValidator(object):
                         required.pop(param_name)
             elif param in ['--help', '-h']:
                 return handle_help()
+            elif param in self.GLOBAL_PARAMETERS:
+                continue
             else:
                 unresolved.append(param)
         if len(unresolved) > 0:
