@@ -11,6 +11,9 @@ from cli_validator.exceptions import ValidateHelpException, ParserHelpException,
 class CommandMetaValidator(object):
     """A validator using Command Metadata generated from breaking change tool"""
 
+    GLOBAL_PARAMETERS = [CLIParser.VERBOSE_FLAG, CLIParser.DEBUG_FLAG, CLIParser.ONLY_SHOW_ERRORS_FLAG,
+                         '--output', '-o', '--query']
+
     def __init__(self, cache_dir: str = './cmd_meta'):
         """
         :param cache_dir: cache directory that store the downloaded metadata
