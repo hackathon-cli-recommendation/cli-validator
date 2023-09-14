@@ -5,7 +5,7 @@ from cli_validator.cmd_meta.parser import CLIParser
 from cli_validator.cmd_meta.util import support_ids
 from cli_validator.cmd_tree import parse_command
 from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, MissingSubCommandException
+    ValidateFailureException, MissingSubCommandException, AmbiguousOptionException
 
 
 class CommandMetaValidator(object):
@@ -88,16 +88,11 @@ class CommandMetaValidator(object):
                 raise e
         meta = self.load_command_meta(cmd.signature, cmd.module)
         unresolved = []
-        param_metas = {}
-        required = {}
-        for param in meta['parameters']:
-            for name in param['options']:
-                param_metas[name] = param
-            if param.get('required', False):
-                required[param['name']] = param
+        option_map = self._build_option_map(meta['parameters'])
+        required = self._get_required_options(meta['parameters'])
         for param in parameters:
-            if param in param_metas:
-                param_meta = param_metas[param]
+            param_meta = self._find_meta(option_map, param)
+            if param_meta:
                 if param_meta.get('required', False) and param_meta['name'] in required:
                     required.pop(param_meta['name'])
             elif param == '--ids' and support_ids(meta):
@@ -119,6 +114,46 @@ class CommandMetaValidator(object):
 
         if meta.get('confirmation', False) and non_interactive and not ('--yes' in parameters or '-y' in parameters):
             raise ConfirmationNoYesException()
+
+    @staticmethod
+    def _build_option_map(params):
+        param_metas = {}
+        for param in params:
+            for name in param['options']:
+                param_metas[name] = param
+                for n in range(2, len(name)):
+                    partial = name[:n]
+                    if partial != '--':
+                        if partial not in param_metas:
+                            param_metas[partial] = []
+                        if isinstance(param_metas[partial], list):
+                            param_metas[partial].append(param)
+        return param_metas
+
+    @staticmethod
+    def _get_required_options(params):
+        required = {}
+        for param in params:
+            if param.get('required', False):
+                required[param['name']] = param
+        return required
+
+    @staticmethod
+    def _find_meta(option_map, user_param):
+        if user_param in option_map:
+            param_meta = option_map[user_param]
+            if isinstance(param_meta, list):
+                if len(param_meta) >= 2:
+                    options = []
+                    for meta in param_meta:
+                        for option in meta['options']:
+                            options.append(option)
+                    raise AmbiguousOptionException(user_param, options)
+                elif len(param_meta) == 1:
+                    return param_meta[0]
+            elif isinstance(param_meta, dict):
+                return param_meta
+        return None
 
     def load_command_meta(self, signature, module):
         """
