@@ -31,6 +31,12 @@ class ChoiceNotExistsException(ValidateFailureException):
             "/".join(argument), param, ', '.join([f"'{c}'" for c in choices])))
 
 
+class AmbiguousOptionException(ValidateFailureException):
+
+    def __init__(self, input_arg, matches):
+        super().__init__("ambiguous option: {} could match {}".format(input_arg, ", ".join(matches)))
+
+
 class ConfirmationNoYesException(ValidateFailureException):
 
     def __init__(self):

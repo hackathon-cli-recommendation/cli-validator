@@ -1,7 +1,8 @@
 import unittest
 
 from cli_validator.cmd_meta.validator import CommandMetaValidator
-from cli_validator.exceptions import ParserFailureException, ValidateHelpException, ConfirmationNoYesException, ValidateFailureException
+from cli_validator.exceptions import ParserFailureException, ValidateHelpException, ConfirmationNoYesException, \
+    ValidateFailureException, AmbiguousOptionException
 
 
 class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
@@ -83,3 +84,13 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
     def test_global_parameter(self):
         self.validator.validate_command('az group show -n qinkai-test -o tsv')
         self.validator.validate_separate_command('az group show', ['-n', '-o'])
+
+    def test_network(self):
+        self.validator.validate_command('az network vnet create --name chatgpt-VNet-123456 --resource-group chatgpt-ResourceGroup-123456 --location $location --address-prefix 10.0.0.0/8 --subnet-name chatgpt-Subnet-123456 --subnet-prefix 10.0.0.0/24')
+        self.validator.validate_separate_command('az network vnet create',  ['--name', '--resource-group', '--location', '--address-prefix', '--subnet-name', '--subnet-prefix'])
+
+    def test_ambiguous_option(self):
+        with self.assertRaisesRegex(ParserFailureException, r'ambiguous option: --su could match .*'):
+            self.validator.validate_command('az network vnet create --name chatgpt-VNet-123456 --resource-group chatgpt-ResourceGroup-123456 --location $location --su 10.0.0.0/24')
+        with self.assertRaises(AmbiguousOptionException):
+            self.validator.validate_separate_command('az network vnet create',  ['--name', '--resource-group', '--location', '--address-prefix', '--su'])
