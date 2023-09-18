@@ -10,7 +10,6 @@ def parse_command(command_tree, command, comments=True):
     Parse a Command into CommandInfo using CommandTree
     :param command_tree:
     :param command: command to be validated
-    :param comments: whether parse comments in the given command
     :return: parsed CommandInfo
     """
     args = shlex.split(command, comments)

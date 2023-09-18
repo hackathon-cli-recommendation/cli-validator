@@ -123,7 +123,6 @@ class CLIParser(argparse.ArgumentParser):
         :param check_required: load the `required` field into the parser
         :param meta: loaded metadata dict
         """
-        self._add_global(placeholder)
         for param in meta['parameters']:
             kwargs = {
                 'dest': param.get('name'),
@@ -131,8 +130,7 @@ class CLIParser(argparse.ArgumentParser):
             }
             if 'choices' in param and not placeholder:
                 kwargs['choices'] = param['choices']
-            if 'nargs' in param:
-                kwargs['nargs'] = param['nargs']
+            kwargs['nargs'] = param.get('nargs', '?')
             if 'type' in param:
                 if placeholder:
                     kwargs['type'] = self.placeholder_type(param['options'], self.TYPE_MAP.get(param['type'], str))
@@ -142,11 +140,13 @@ class CLIParser(argparse.ArgumentParser):
                 kwargs['required'] = param['required']
             if param['name'] == 'yes':
                 kwargs['action'] = 'store_true'
+                kwargs.pop('nargs')
             self.add_argument(*param['options'], **kwargs)
-        if support_ids(meta):
+        self._add_global(placeholder, 'subscription' not in [p['name'] for p in meta['parameters']])
+        if support_ids(meta) and 'ids' not in [param['name'] for param in meta['parameters']]:
             self.add_argument('--ids', dest='ids', nargs='+')
 
-    def _add_global(self, placeholder=True):
+    def _add_global(self, placeholder=True, subscription=True):
         """
         Create a global Argument Parser for Global Arguments. This should be the parent of all subcommands.
         """
@@ -167,6 +167,8 @@ class CLIParser(argparse.ArgumentParser):
                                help='JMESPath query string. See http://jmespath.org/ for more'
                                     ' information and examples.',
                                type=self.placeholder_type(['--query'], CLIParser.jmespath_type))
+        if subscription:
+            self.add_argument('--subscription', dest='_subscription')
 
     def error(self, message: str) -> NoReturn:
         """
