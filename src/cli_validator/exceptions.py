@@ -66,3 +66,10 @@ class UnknownCommandException(ValidateFailureException):
 class MissingSubCommandException(UnknownCommandException):
     def __init__(self, command):
         super().__init__(command)
+
+
+class UnmatchedBracketsException(ValidateFailureException):
+    def __init__(self, start, end=None):
+        if start == end:
+            end = None
+        super().__init__('Unmatched Brackets: {}'.format(f'{start} ... {end}' if end else start))

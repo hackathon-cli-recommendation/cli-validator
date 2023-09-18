@@ -13,6 +13,22 @@ class CommandMetaValidator(object):
 
     GLOBAL_PARAMETERS = [CLIParser.VERBOSE_FLAG, CLIParser.DEBUG_FLAG, CLIParser.ONLY_SHOW_ERRORS_FLAG,
                          '--output', '-o', '--query']
+    GLOBAL_PARAMETERS_META = [{
+        "name": "VERBOSE_FLAG",
+        "options": [CLIParser.VERBOSE_FLAG]
+    }, {
+        "name": "DEBUG_FLAG",
+        "options": [CLIParser.DEBUG_FLAG]
+    }, {
+        "name": "ONLY_SHOW_ERRORS_FLAG",
+        "options": [CLIParser.ONLY_SHOW_ERRORS_FLAG],
+    }, {
+        "name": CLIParser.OUTPUT_DEST,
+        "options": ["--output", "-o"]
+    }, {
+        "name": "_jmespath_query",
+        "options": ["--query"]
+    }]
 
     def __init__(self, cache_dir: str = './cmd_meta'):
         """
@@ -51,6 +67,8 @@ class CommandMetaValidator(object):
             else:
                 return
         meta = self.load_command_meta(cmd.signature, cmd.module)
+        for sub_command in cmd.sub_commands:
+            self.validate_command(sub_command, non_interactive, placeholder, no_help, False)
         parser = self.build_parser(meta, placeholder)
         try:
             namespace = parser.parse_args(cmd.parameters)
@@ -88,8 +106,11 @@ class CommandMetaValidator(object):
                 raise e
         meta = self.load_command_meta(cmd.signature, cmd.module)
         unresolved = []
-        option_map = self._build_option_map(meta['parameters'])
-        required = self._get_required_options(meta['parameters'])
+        param_metas = meta['parameters'] + self.GLOBAL_PARAMETERS_META
+        if 'subscription' not in [p['name'] for p in meta['parameters']]:
+            param_metas.append({"name": "_subscription", "options": ['--subscription']})
+        option_map = self._build_option_map(param_metas)
+        required = self._get_required_options(param_metas)
         for param in parameters:
             param_meta = self._find_meta(option_map, param)
             if param_meta:
@@ -101,8 +122,6 @@ class CommandMetaValidator(object):
                         required.pop(param_name)
             elif param in ['--help', '-h']:
                 return handle_help()
-            elif param in self.GLOBAL_PARAMETERS:
-                continue
             else:
                 unresolved.append(param)
         if len(unresolved) > 0:
@@ -147,7 +166,8 @@ class CommandMetaValidator(object):
                     options = []
                     for meta in param_meta:
                         for option in meta['options']:
-                            options.append(option)
+                            if option.startswith(user_param):
+                                options.append(option)
                     raise AmbiguousOptionException(user_param, options)
                 elif len(param_meta) == 1:
                     return param_meta[0]

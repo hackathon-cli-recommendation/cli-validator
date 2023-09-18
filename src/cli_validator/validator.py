@@ -64,8 +64,11 @@ class CLIValidator(object):
     def validate_command_set(self, command_set, non_interactive=False, no_help=True):
         result = CommandSetResult()
         for command in command_set:
-            result.append(CommandSetResultItem(
-                command,
-                self.validate_separate_command(command["command"], command["arguments"], non_interactive, no_help),
-                self.validate_command(command["example"], non_interactive, no_help)))
+            item = CommandSetResultItem(command)
+            if "command" in command:
+                item.result = self.validate_separate_command(
+                    command["command"], command.get("arguments", []), non_interactive, no_help)
+            if "example" in command:
+                item.example_result = self.validate_command(command["example"], non_interactive, no_help)
+            result.append(item)
         return result

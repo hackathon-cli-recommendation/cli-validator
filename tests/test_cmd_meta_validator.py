@@ -1,8 +1,9 @@
 import unittest
 
+from cli_validator import CommandInfo
 from cli_validator.cmd_meta.validator import CommandMetaValidator
 from cli_validator.exceptions import ParserFailureException, ValidateHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, AmbiguousOptionException
+    ValidateFailureException, AmbiguousOptionException, UnmatchedBracketsException
 
 
 class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
@@ -67,7 +68,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
 
     def test_placeholder(self):
         self.validator.validate_command('az network public-ip create -g g -n n --sku Standard')
-        self.validator.validate_command('az network public-ip create -g $rgName -n ${name} --sku <SKU_NAME>')
+        self.validator.validate_command('az network public-ip create -g $rgName -n $name --sku <SKU_NAME>')
         
     def test_validate_command_with_ids(self):
         self.validator.validate_command('az storage account show --ids /subscriptions/xxxxx/resourceGroups/xxxxx/providers/xxxxx/storageAccounts/xxxxx')
@@ -94,3 +95,40 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
             self.validator.validate_command('az network vnet create --name chatgpt-VNet-123456 --resource-group chatgpt-ResourceGroup-123456 --location $location --su 10.0.0.0/24')
         with self.assertRaises(AmbiguousOptionException):
             self.validator.validate_separate_command('az network vnet create',  ['--name', '--resource-group', '--location', '--address-prefix', '--su'])
+        self.validator.validate_separate_command('az group list', ['--out'])
+
+    def test_subscription(self):
+        self.validator.validate_command('az account set -s sss')
+        self.validator.validate_command('az group list --subscription sss')
+        self.validator.validate_separate_command('az account set', ['-s'])
+        self.validator.validate_separate_command('az group list', ['--subscription'])
+
+    def test_inner_json(self):
+        self.validator.validate_command('az vmss extension set --publisher Microsoft.Azure.Extensions --version 2.0 --name CustomScript --resource-group myResourceGroupAG --vmss-name myvmss --settings \'{ "fileUris": ["https://raw.githubusercontent.com/Azure/azure-docs-powershell-samples/master/application-gateway/iis/install_nginx.sh"], "commandToExecute": "./install_nginx.sh" }\'')
+
+    def test_complex_query(self):
+        self.validator.validate_command('az webapp deployment list-publishing-profiles --name $webapp --resource-group $resourceGroup --query "[?contains(publishMethod, \'FTP\')].[publishUrl,userName,userPWD]" --output tsv')
+
+    def test_dollar_expression(self):
+        self.validator.validate_command('az ad sp create-for-rbac --name $ACR_NAME --scopes $(az acr show -n n -g g --query id --output tsv) --role acrpull')
+
+    def test_sub_command(self):
+        self.validator.validate_command('az keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show -n n -g g --query password --output tsv) --role acrpull)')
+
+
+class TestCommandInfo(unittest.TestCase):
+    def test_extract_sub_command(self):
+        info = CommandInfo(None, 'vm', 'ad sp create-for-rbac --name $ACR_NAME --scopes $(az acr show --query id --output tsv) --role acrpull'.split())
+        self.assertEqual(info.sub_commands[0], 'az acr show --query id --output tsv')
+
+    def test_nested(self):
+        info = CommandInfo(None, 'vm', 'keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show --query password --output tsv) --role acrpull)'.split())
+        self.assertEqual(info.sub_commands[0], 'az ad sp create-for-rbac --scopes $(az acr show --query password --output tsv) --role acrpull')
+
+    def test_error(self):
+        with self.assertRaises(UnmatchedBracketsException):
+            CommandInfo(None, 'vm', 'keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show --query password --output tsv) --role acrpull'.split())
+
+    def test_merged_param(self):
+        info = CommandInfo(None, 'vm', 'keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show --query password --output tsv) --role acrpull)'.split())
+        self.assertEqual(info.parameters[8], '$(az ad sp create-for-rbac --scopes $(az acr show --query password --output tsv) --role acrpull)')

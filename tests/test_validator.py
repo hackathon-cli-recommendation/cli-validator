@@ -19,3 +19,6 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
             'az vmss update --resource-group <resource-group-name> --name <vmss-name> '
             '--image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest --security-type TrustedLaunch '
             '--enable-vtpm true').no_error)
+
+    def test_extension_command(self):
+        self.assertTrue(self.validator.validate_command('az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"').no_error)
