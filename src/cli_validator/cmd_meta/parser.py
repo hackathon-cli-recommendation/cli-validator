@@ -74,7 +74,8 @@ class CLIParser(argparse.ArgumentParser):
 
     PLACEHOLDER_REFEX = (r'(\$[a-zA-Z0-9_]*$)|'
                          r'(\$\{[a-zA-Z0-9_ -\.\[\]]*\}$)|'
-                         r'(\<[a-zA-Z0-9_]*\>$)|'
+                         r'(\$\([a-zA-Z0-9_ -\.\[\]]*\)$)|'
+                         r'(\<[a-zA-Z0-9_]*\>$)'
                          r'(\<\<[a-zA-Z0-9_ -]*\>\>$)')
 
     @classmethod

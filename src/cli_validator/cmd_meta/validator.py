@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 from cli_validator.cmd_meta.loader import load_metas, build_command_tree
 from cli_validator.cmd_meta.parser import CLIParser
 from cli_validator.cmd_meta.util import support_ids
-from cli_validator.cmd_tree import parse_command
+from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
     ValidateFailureException, MissingSubCommandException, AmbiguousOptionException
 
@@ -36,7 +36,7 @@ class CommandMetaValidator(object):
         """
         self.cache_dir = cache_dir
         self.metas = None
-        self.command_tree = None
+        self.command_tree: Optional[CommandTreeParser] = None
 
     def load_metas(self, version: str):
         """
@@ -50,33 +50,28 @@ class CommandMetaValidator(object):
         self.metas = await load_metas(version, self.cache_dir)
         self.command_tree = build_command_tree(self.metas)
 
-    def validate_command(self, command, non_interactive=False, placeholder=True, no_help=True, comments=True):
+    def validate_command(self, command: List[str], non_interactive=False, placeholder=True, no_help=True):
         """
         Validate a command to check if the command is valid
         :param command: command to be validated
         :param non_interactive: check `--yes` in a command with confirmation
         :param placeholder:
         :param no_help: reject commands with `--help`
-        :param comments: whether parse comments in the given command
         :return: parsed namespace
         """
-        cmd = parse_command(self.command_tree, command, comments)
-        if cmd.module is None:
+        def handle_help(e=None):
             if no_help:
-                raise ValidateHelpException()
-            else:
-                return
+                raise ValidateHelpException() from e
+
+        cmd = self.command_tree.parse_command(command)
+        if cmd.module is None:
+            return handle_help()
         meta = self.load_command_meta(cmd.signature, cmd.module)
-        for sub_command in cmd.sub_commands:
-            self.validate_command(sub_command, non_interactive, placeholder, no_help, False)
         parser = self.build_parser(meta, placeholder)
         try:
             namespace = parser.parse_args(cmd.parameters)
         except ParserHelpException as e:
-            if no_help:
-                raise ValidateHelpException() from e
-            else:
-                return
+            return handle_help(e)
 
         missing_args = []
         for param in meta['parameters']:
@@ -90,18 +85,18 @@ class CommandMetaValidator(object):
         if meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
             raise ConfirmationNoYesException()
 
-    def validate_separate_command(self, command_signature: str, parameters: List[str], non_interactive=False, no_help=True):
-        def handle_help():
+    def validate_separate_command(self, command_signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
+        def handle_help(e=None):
             if no_help:
-                raise ValidateHelpException()
+                raise ValidateHelpException() from e
 
         try:
-            cmd = parse_command(self.command_tree, command_signature)
+            cmd = self.command_tree.parse_command(command_signature)
             if cmd.module is None:
                 return handle_help()
         except MissingSubCommandException as e:
             if len(parameters) == 1 and parameters[0] in ['-h', '--help']:
-                return handle_help()
+                return handle_help(e)
             else:
                 raise e
         meta = self.load_command_meta(cmd.signature, cmd.module)
@@ -175,7 +170,7 @@ class CommandMetaValidator(object):
                 return param_meta
         return None
 
-    def load_command_meta(self, signature, module):
+    def load_command_meta(self, signature: List[str], module: str):
         """
         Load metadata of specific command.
         :param signature: command signature
