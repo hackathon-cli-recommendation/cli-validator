@@ -9,6 +9,7 @@ from typing import Optional
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob import BlobClient
 
+from cli_validator.cmd_tree import CommandTreeParser
 
 BLOB_URL = 'https://azcmdchangemgmt.blob.core.windows.net'
 CONTAINER_NAME = 'cmd-metadata-per-version'
@@ -149,4 +150,4 @@ def build_command_tree(metas):
     for meta in metas.values():
         module = meta["module_name"]
         _attach_sub_group_to_node(meta, tree, module)
-    return tree
+    return CommandTreeParser(tree)

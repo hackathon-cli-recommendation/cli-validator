@@ -1,11 +1,11 @@
 import os
+import shlex
 from typing import List
 
-from cli_validator import Result, CommandSetResult, CommandSetResultItem
 from cli_validator.cmd_meta.validator import CommandMetaValidator
-from cli_validator.cmd_tree import parse_command
 from cli_validator.cmd_tree.loader import load_command_tree
 from cli_validator.exceptions import UnknownCommandException, ValidateFailureException
+from cli_validator.result import FailureInfo, CommandSetResult, CommandSetResultItem
 
 
 class CLIValidator(object):
@@ -20,7 +20,7 @@ class CLIValidator(object):
     async def load_metas_async(self, version: str):
         await self.cmd_meta_validator.load_metas_async(version)
 
-    def validate_command(self, command, non_interactive=False, placeholder=True, no_help=True, comments=True):
+    def validate_command(self, command: str, non_interactive=False, placeholder=True, no_help=True, comments=True):
         """
         Validate an input command
         :param command: to be validated
@@ -32,17 +32,21 @@ class CLIValidator(object):
         """
         try:
             try:
-                self.cmd_meta_validator.validate_command(command, non_interactive, placeholder, no_help, comments)
+                tokens = shlex.split(command)
+            except ValueError as e:
+                raise ValidateFailureException(str(e)) from e
+            try:
+                self.cmd_meta_validator.validate_command(tokens, non_interactive, placeholder, no_help)
             except UnknownCommandException:
-                parse_command(self.ext_command_tree, command, comments)
+                self.ext_command_tree.parse_command(tokens)
         except ValidateFailureException as e:
-            return Result(False, e.msg)
-        return Result(True)
+            return FailureInfo.from_exception(e, command)
+        return None
 
-    def validate_separate_command(self, command_signature, parameters, non_interactive=False, no_help=True):
+    def validate_separate_command(self, signature: str, parameters: List[str], non_interactive=False, no_help=True):
         """
         Validate an input command
-        :param command_signature: signature to be validated
+        :param signature: signature to be validated
         :param parameters: parameter key list
         :param non_interactive: check `--yes` in a command with confirmation
         :param no_help: reject commands with `--help`
@@ -50,13 +54,16 @@ class CLIValidator(object):
         """
         try:
             try:
-                self.cmd_meta_validator.validate_separate_command(
-                    command_signature, parameters, non_interactive, no_help)
+                tokens = shlex.split(signature)
+            except ValueError as e:
+                raise ValidateFailureException(str(e)) from e
+            try:
+                self.cmd_meta_validator.validate_separate_command(tokens, parameters, non_interactive, no_help)
             except UnknownCommandException:
-                parse_command(self.ext_command_tree, command_signature, False)
+                self.ext_command_tree.parse_command(tokens)
         except ValidateFailureException as e:
-            return Result(False, e.msg)
-        return Result(True)
+            return FailureInfo.from_exception(e, '{} {}'.format(signature, ' '.join(parameters)))
+        return None
 
     def validate(self, commands: List[str]):
         return [self.validate_command(cmd) for cmd in commands]
