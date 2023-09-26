@@ -60,9 +60,15 @@ class CommandTreeCorruptedException(ValidateFailureException):
 
 class UnknownCommandException(ValidateFailureException):
     def __init__(self, command):
-        super().__init__(f'Unknown Command: {command}.')
+        super().__init__(f'Unknown Command: \'{command}\'.')
 
 
 class MissingSubCommandException(UnknownCommandException):
     def __init__(self, command):
         super().__init__(command)
+
+
+class TooLongSignatureException(UnknownCommandException):
+    def __init__(self, command, fixed):
+        super().__init__(command)
+        self.msg += f' Do you mean \'{fixed}\'?'

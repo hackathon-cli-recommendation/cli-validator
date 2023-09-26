@@ -1,3 +1,4 @@
+import shlex
 from typing import List, Optional
 
 from cli_validator.cmd_meta.loader import load_metas, build_command_tree
@@ -5,7 +6,7 @@ from cli_validator.cmd_meta.parser import CLIParser
 from cli_validator.cmd_meta.util import support_ids
 from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, MissingSubCommandException, AmbiguousOptionException
+    ValidateFailureException, MissingSubCommandException, AmbiguousOptionException, TooLongSignatureException
 
 
 class CommandMetaValidator(object):
@@ -86,13 +87,13 @@ class CommandMetaValidator(object):
         if meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
             raise ConfirmationNoYesException()
 
-    def validate_separate_command(self, command_signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
+    def validate_separate_command(self, signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
         def handle_help(e=None):
             if no_help:
                 raise ValidateHelpException() from e
 
         try:
-            cmd = self.command_tree.parse_command(command_signature)
+            cmd = self.command_tree.parse_command(signature)
             if cmd.module is None:
                 return handle_help()
         except MissingSubCommandException as e:
@@ -100,6 +101,8 @@ class CommandMetaValidator(object):
                 return handle_help(e)
             else:
                 raise e
+        if cmd.parameters:
+            raise TooLongSignatureException(shlex.join(signature), 'az ' + shlex.join(cmd.signature))
         meta = self.load_command_meta(cmd.signature, cmd.module)
         unresolved = []
         param_metas = meta['parameters'] + self.GLOBAL_PARAMETERS_META
