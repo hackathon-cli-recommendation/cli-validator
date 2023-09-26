@@ -34,6 +34,10 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValidateFailureException):
             self.validate_separate('az vm create', ['-n', '-g', '--unknown'])
 
+    def test_signature_with_param(self):
+        with self.assertRaises(ValidateFailureException):
+            self.validate_separate('az vmss show -o table', ['-g', '-n'])
+
     def test_help(self):
         with self.assertRaises(ValidateHelpException):
             self.validate_command('az help')
