@@ -4,7 +4,7 @@ import shlex
 from typing import List
 
 from cli_validator.cmd_meta.validator import CommandMetaValidator
-from cli_validator.cmd_tree.loader import load_command_tree
+from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.exceptions import UnknownCommandException, ValidateFailureException
 from cli_validator.result import FailureInfo, CommandSetResult, CommandSetResultItem
 
@@ -12,8 +12,8 @@ from cli_validator.result import FailureInfo, CommandSetResult, CommandSetResult
 class CLIValidator(object):
     def __init__(self, cache_path: str = './cache'):
         self.cmd_meta_validator = CommandMetaValidator(os.path.join(cache_path, 'cmd_meta'))
-        self.ext_command_tree = load_command_tree('https://aka.ms/azExtCmdTree',
-                                                  os.path.join(cache_path, 'ext_command_tree.json'))
+        self.ext_command_tree = CommandTreeParser.load('https://aka.ms/azExtCmdTree',
+                                                       os.path.join(cache_path, 'ext_command_tree.json'))
 
     def load_metas(self, version: str, force_refresh=False):
         """
