@@ -48,14 +48,15 @@ async def fetch_metas(version: str, target_dir: str = './cmd_meta'):
         await asyncio.wait(tasks)
 
 
-async def load_metas(version: str, meta_dir: str = './cmd_meta'):
+async def load_metas(version: str, meta_dir: str = './cmd_meta', force_refresh=False):
     """
     Load Command Metadata from local cache, fetch from Blob if not found
     :param version: version of `azure-cli` to be loaded
     :param meta_dir: root directory to cache Command Metadata
+    :param force_refresh: load the metadata through network no matter whether there is a cache
     :return: list of command metadata
     """
-    metas = load_metas_from_disk(version, meta_dir)
+    metas = load_metas_from_disk(version, meta_dir) if not force_refresh else None
     if not metas:
         await fetch_metas(version, meta_dir)
         metas = load_metas_from_disk(version, meta_dir)

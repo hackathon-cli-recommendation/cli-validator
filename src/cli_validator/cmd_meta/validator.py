@@ -38,16 +38,17 @@ class CommandMetaValidator(object):
         self.metas = None
         self.command_tree: Optional[CommandTreeParser] = None
 
-    def load_metas(self, version: str):
+    def load_metas(self, version: str, force_refresh=False):
         """
         :param version: the version of `azure-cli` that provides the metadata
+        :param force_refresh: load the metadata through network no matter whether there is a cache
         """
-        self.metas = load_metas(version, self.cache_dir)
+        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh)
         self.command_tree = build_command_tree(self.metas)
 
-    async def load_metas_async(self, version: str):
+    async def load_metas_async(self, version: str, force_refresh=False):
         from cli_validator.cmd_meta.loader.aio import load_metas
-        self.metas = await load_metas(version, self.cache_dir)
+        self.metas = await load_metas(version, self.cache_dir, force_refresh=force_refresh)
         self.command_tree = build_command_tree(self.metas)
 
     def validate_command(self, command: List[str], non_interactive=False, placeholder=True, no_help=True):
@@ -55,7 +56,7 @@ class CommandMetaValidator(object):
         Validate a command to check if the command is valid
         :param command: command to be validated
         :param non_interactive: check `--yes` in a command with confirmation
-        :param placeholder:
+        :param placeholder: allow placeholder like <ResourceName>, $ResourceName as field value
         :param no_help: reject commands with `--help`
         :return: parsed namespace
         """

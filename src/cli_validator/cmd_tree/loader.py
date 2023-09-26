@@ -22,8 +22,8 @@ def load_from_disk(file_path):
 
 
 def load_command_tree(url: str, file_path: str):
-    tree = CommandTreeParser(load_from_disk(file_path))
+    tree = load_from_disk(file_path)
     if not tree:
         fetch_command_tree(url, file_path)
-        tree = CommandTreeParser(load_from_disk(file_path))
-    return tree
+        tree = load_from_disk(file_path)
+    return CommandTreeParser(tree)

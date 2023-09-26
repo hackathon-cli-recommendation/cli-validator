@@ -72,16 +72,16 @@ class CLIParser(argparse.ArgumentParser):
         'GUID/UUID': str,
     }
 
-    PLACEHOLDER_REFEX = (r'(\$[a-zA-Z0-9_]*$)|'
+    PLACEHOLDER_REGEX = (r'(\$[a-zA-Z0-9_]*$)|'
                          r'(\$\{[a-zA-Z0-9_ -\.\[\]]*\}$)|'
                          r'(\$\([a-zA-Z0-9_ -\.\[\]]*\)$)|'
-                         r'(\<[a-zA-Z0-9_]*\>$)'
+                         r'(\<[a-zA-Z0-9_ ]*\>$)'
                          r'(\<\<[a-zA-Z0-9_ -]*\>\>$)')
 
     @classmethod
     def placeholder_type(cls, options, back_type, choices=None):
         def type_convert(raw_query):
-            if re.match(cls.PLACEHOLDER_REFEX, raw_query):
+            if re.match(cls.PLACEHOLDER_REGEX, raw_query):
                 return raw_query
             else:
                 value = back_type(raw_query)
