@@ -4,7 +4,7 @@ from typing import List
 
 from cli_validator.cmd_meta.validator import CommandMetaValidator
 from cli_validator.exceptions import ParserFailureException, ValidateHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, AmbiguousOptionException, UnmatchedBracketsException, UnknownCommandException
+    ValidateFailureException, AmbiguousOptionException, UnknownCommandException
 
 
 class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
@@ -82,7 +82,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
     def test_placeholder(self):
         self.validate_command('az network public-ip create -g g -n n --sku Standard')
         self.validate_command('az network public-ip create -g $rgName -n $name --sku <SKU_NAME>')
-        self.validate_command('az network public-ip create -g $rgName -n $name --sku <SKU NAME>')
+        self.validate_command('az network public-ip create -g $rgName -n $name --sku "<SKU NAME>"')
         self.validate_command('az policy assignment create --policy enforce-tagging --name enforce-tagging-assignment --scope /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}')
         
     def test_validate_command_with_ids(self):

@@ -1,14 +1,19 @@
 import shlex
-from typing import List
+from typing import List, Optional
 
+from cli_validator.cmd_tree.loader import load_command_tree
 from cli_validator.command import CommandInfo
 from cli_validator.exceptions import EmptyCommandException, NonAzCommandException, CommandTreeCorruptedException, \
     UnknownCommandException, MissingSubCommandException
 
 
 class CommandTreeParser(object):
-    def __init__(self, cmd_tree: dict):
+    def __init__(self, cmd_tree: Optional[dict] = None):
         self.cmd_tree = cmd_tree
+
+    @staticmethod
+    def load(url: str, file_path: str):
+        return CommandTreeParser(load_command_tree(url, file_path))
 
     def parse_command(self, command: List[str]):
         """
