@@ -87,7 +87,7 @@ class CommandMetaValidator(object):
         if meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
             raise ConfirmationNoYesException()
 
-    def validate_separate_command(self, signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
+    def validate_sig_params(self, signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
         def handle_help(e=None):
             if no_help:
                 raise ValidateHelpException() from e

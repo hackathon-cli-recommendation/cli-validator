@@ -13,7 +13,7 @@ class FailureInfo(object):
         return FailureInfo(e.msg, command)
 
     def __str__(self):
-        return 'Failure: {}\t----\t{}'.format(self.msg, self.command)
+        return 'Failure ({}): \t{}'.format(self.command, self.msg)
 
 
 class CommandSetResultItem(object):

@@ -1,8 +1,3 @@
-class UnknownTypeException(Exception):
-    def __init__(self, typ):
-        self.msg = f'Unknown Type: {typ}.'
-
-
 class ValidateFailureException(Exception):
     def __init__(self, msg):
         self.msg = msg

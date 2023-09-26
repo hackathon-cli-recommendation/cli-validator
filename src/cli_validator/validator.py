@@ -60,7 +60,7 @@ class CLIValidator(object):
             return FailureInfo.from_exception(e, command)
         return None
 
-    def validate_separate_command(self, signature: str, parameters: List[str], non_interactive=False, no_help=True):
+    def validate_sig_params(self, signature: str, parameters: List[str], non_interactive=False, no_help=True):
         """
         Validate a command signature and parameters used with it
         :param signature: signature to be validated
@@ -75,7 +75,7 @@ class CLIValidator(object):
             except ValueError as e:
                 raise ValidateFailureException(str(e)) from e
             try:
-                self.cmd_meta_validator.validate_separate_command(tokens, parameters, non_interactive, no_help)
+                self.cmd_meta_validator.validate_sig_params(tokens, parameters, non_interactive, no_help)
             except UnknownCommandException:
                 self.ext_command_tree.parse_command(tokens)
         except ValidateFailureException as e:
@@ -95,7 +95,7 @@ class CLIValidator(object):
         for command in command_set:
             item = CommandSetResultItem(command)
             if "command" in command:
-                item.result = self.validate_separate_command(
+                item.result = self.validate_sig_params(
                     command["command"], command.get("arguments", []), non_interactive, no_help)
             if "example" in command:
                 item.example_result = self.validate_command(command["example"], non_interactive, no_help)
