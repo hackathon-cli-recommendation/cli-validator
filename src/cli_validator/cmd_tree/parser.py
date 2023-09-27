@@ -18,8 +18,8 @@ class CommandTreeParser(object):
     def parse_command(self, command: List[str]):
         """
         Parse a Command into CommandInfo using CommandTree
-        :param command:
-        :return: parsed CommandInfo
+        :param command: command to be validated
+        :return: parsed `CommandInfo`. The `module` of `CommandInfo` is `None` if the command is a help command.
         """
         if len(command) == 0:
             raise EmptyCommandException()
@@ -29,12 +29,14 @@ class CommandTreeParser(object):
             return CommandInfo(None, [command[1]], [])
         parameters = command[1:]
         signature = []
+        # Go through the node in the tree that matches each word in the signature
         cur_node = self.cmd_tree
         for part in command[1:]:
             if part in cur_node:
                 signature.append(part)
                 parameters.pop(0)
                 if isinstance(cur_node[part], str):
+                    # The module of the command is stored in the leaf node
                     return CommandInfo(cur_node[part], signature, parameters)
                 elif isinstance(cur_node[part], dict):
                     cur_node = cur_node[part]

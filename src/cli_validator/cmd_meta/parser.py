@@ -126,7 +126,6 @@ class CLIParser(argparse.ArgumentParser):
         """
         for param in meta['parameters']:
             kwargs = {
-                'dest': param.get('name'),
                 'default': param.get('default'),
             }
             if 'choices' in param and not placeholder:
@@ -142,7 +141,11 @@ class CLIParser(argparse.ArgumentParser):
             if param['name'] == 'yes':
                 kwargs['action'] = 'store_true'
                 kwargs.pop('nargs')
-            self.add_argument(*param['options'], **kwargs)
+            if param['options']:
+                kwargs['dest'] = param['name']
+                self.add_argument(*param['options'], **kwargs)
+            else:
+                self.add_argument(param['name'], **kwargs)
         self._add_global(placeholder, 'subscription' not in [p['name'] for p in meta['parameters']])
         if support_ids(meta) and 'ids' not in [param['name'] for param in meta['parameters']]:
             self.add_argument('--ids', dest='ids', nargs='+')
