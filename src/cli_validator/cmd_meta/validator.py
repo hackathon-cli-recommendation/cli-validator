@@ -39,17 +39,19 @@ class CommandMetaValidator(object):
         self.metas = None
         self.command_tree: Optional[CommandTreeParser] = None
 
-    def load_metas(self, version: str, force_refresh=False):
+    def load_metas(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
         """
         :param version: the version of `azure-cli` that provides the metadata
         :param force_refresh: load the metadata through network no matter whether there is a cache
+        :param version_refresh: load the version index no matter whether there is a cache
         """
-        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh)
+        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh, version_refresh=version_refresh)
         self.command_tree = build_command_tree(self.metas)
 
-    async def load_metas_async(self, version: str, force_refresh=False):
+    async def load_metas_async(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
         from cli_validator.cmd_meta.loader.aio import load_metas
-        self.metas = await load_metas(version, self.cache_dir, force_refresh=force_refresh)
+        self.metas = await load_metas(version, self.cache_dir, force_refresh=force_refresh,
+                                      version_refresh=version_refresh)
         self.command_tree = build_command_tree(self.metas)
 
     def validate_command(self, command: List[str], non_interactive=False, placeholder=True, no_help=True):

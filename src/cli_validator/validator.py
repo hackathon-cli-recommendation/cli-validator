@@ -1,7 +1,7 @@
 import os
 import re
 import shlex
-from typing import List
+from typing import List, Optional
 
 from cli_validator.cmd_meta.validator import CommandMetaValidator
 from cli_validator.cmd_tree import CommandTreeParser
@@ -15,21 +15,24 @@ class CLIValidator(object):
         self.ext_command_tree = CommandTreeParser.load('https://aka.ms/azExtCmdTree',
                                                        os.path.join(cache_path, 'ext_command_tree.json'))
 
-    def load_metas(self, version: str, force_refresh=False):
+    def load_metas(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
         """
         Load command metadata through network or from local cache
         :param version: the version of Azure CLI from which the metadata is extracted
         :param force_refresh: force using the metadata on the network instead of local cache
+        :param version_refresh: load the version index no matter whether there is a cache
         """
-        self.cmd_meta_validator.load_metas(version, force_refresh=force_refresh)
+        self.cmd_meta_validator.load_metas(version, force_refresh=force_refresh, version_refresh=version_refresh)
 
-    async def load_metas_async(self, version: str, force_refresh=False):
+    async def load_metas_async(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
         """
         Load command metadata through network or from local cache
         :param version: the version of Azure CLI from which the metadata is extracted
         :param force_refresh: force using the metadata on the network instead of local cache
+        :param version_refresh: load the version index no matter whether there is a cache
         """
-        await self.cmd_meta_validator.load_metas_async(version, force_refresh=force_refresh)
+        await self.cmd_meta_validator.load_metas_async(version, force_refresh=force_refresh,
+                                                       version_refresh=version_refresh)
 
     def validate_command(self, command: str, non_interactive=False, placeholder=True, no_help=True, comments=False):
         """
