@@ -20,6 +20,7 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
             'az vmss update --resource-group <resource-group-name> --name <vmss-name> '
             '--image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest --security-type TrustedLaunch '
             '--enable-vtpm true'))
+        self.assertIsNone(self.validator.validate_command('az acr build . --image $imageName --registry $registryName --file Dockerfile --build-arg http_proxy=http://myproxy.com'))
 
     def test_quota_error(self):
         self.assertEqual(self.validator.validate_command('az group show -n "/subscription/{sub}/resourceGroup/{rg}').msg, 'No closing quotation')

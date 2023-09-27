@@ -18,7 +18,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         self.validator.validate_command(shlex.split(command), **kwargs)
 
     def validate_separate(self, signature: str, parameter: List[str], **kwargs):
-        self.validator.validate_separate_command(shlex.split(signature), parameter, **kwargs)
+        self.validator.validate_sig_params(shlex.split(signature), parameter, **kwargs)
 
     def test_validate_command(self):
         self.validate_command('az webapp create -g g -n n -p p')

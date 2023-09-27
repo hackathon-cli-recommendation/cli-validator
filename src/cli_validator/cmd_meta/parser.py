@@ -126,7 +126,6 @@ class CLIParser(argparse.ArgumentParser):
         """
         for param in meta['parameters']:
             kwargs = {
-                'dest': param.get('name'),
                 'default': param.get('default'),
             }
             if 'choices' in param and not placeholder:
@@ -142,7 +141,11 @@ class CLIParser(argparse.ArgumentParser):
             if param['name'] == 'yes':
                 kwargs['action'] = 'store_true'
                 kwargs.pop('nargs')
-            self.add_argument(*param['options'], **kwargs)
+            if param['options']:
+                kwargs['dest'] = param['name']
+                self.add_argument(*param['options'], **kwargs)
+            else:
+                self.add_argument(param['name'], **kwargs)
         self._add_global(placeholder, 'subscription' not in [p['name'] for p in meta['parameters']])
         if support_ids(meta) and 'ids' not in [param['name'] for param in meta['parameters']]:
             self.add_argument('--ids', dest='ids', nargs='+')
@@ -159,15 +162,22 @@ class CLIParser(argparse.ArgumentParser):
         arg_group.add_argument(CLIParser.ONLY_SHOW_ERRORS_FLAG, dest='_log_verbosity_only_show_errors',
                                action='store_true',
                                help='Only show errors, suppressing warnings.')
+        if placeholder:
+            output_type = self.placeholder_type(['--output', '-o'], str.lower,
+                                                choices=list(CLIParser._OUTPUT_FORMAT_DICT))
+            query_type = self.placeholder_type(['--query'], CLIParser.jmespath_type)
+        else:
+            output_type = str.lower
+            query_type = CLIParser.jmespath_type
         arg_group.add_argument('--output', '-o', dest=CLIParser.OUTPUT_DEST,
                                choices=list(CLIParser._OUTPUT_FORMAT_DICT) if not placeholder else None,
                                default='json',
                                help='Output format',
-                               type=self.placeholder_type(['--query'], str.lower, choices=list(CLIParser._OUTPUT_FORMAT_DICT)))
+                               type=output_type)
         arg_group.add_argument('--query', dest='_jmespath_query', metavar='JMESPATH',
                                help='JMESPath query string. See http://jmespath.org/ for more'
                                     ' information and examples.',
-                               type=self.placeholder_type(['--query'], CLIParser.jmespath_type))
+                               type=query_type)
         if subscription:
             self.add_argument('--subscription', dest='_subscription')
 

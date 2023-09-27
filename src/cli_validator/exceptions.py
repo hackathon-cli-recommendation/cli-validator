@@ -1,8 +1,3 @@
-class UnknownTypeException(Exception):
-    def __init__(self, typ):
-        self.msg = f'Unknown Type: {typ}.'
-
-
 class ValidateFailureException(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -14,7 +9,6 @@ class ParserFailureException(ValidateFailureException):
 
 
 class ValidateHelpException(ValidateFailureException):
-
     def __init__(self):
         super().__init__('The input command is help or `--help`.')
 
@@ -25,20 +19,17 @@ class ParserHelpException(ValidateFailureException):
 
 
 class ChoiceNotExistsException(ValidateFailureException):
-
     def __init__(self, argument, param, choices):
         super().__init__("argument {}: invalid choice: '{}' (choose from {})".format(
             "/".join(argument), param, ', '.join([f"'{c}'" for c in choices])))
 
 
 class AmbiguousOptionException(ValidateFailureException):
-
     def __init__(self, input_arg, matches):
         super().__init__("ambiguous option: {} could match {}".format(input_arg, ", ".join(matches)))
 
 
 class ConfirmationNoYesException(ValidateFailureException):
-
     def __init__(self):
         super().__init__('`--yes` is required for commands in non-interactive mode.')
 

@@ -80,14 +80,14 @@ class CommandMetaValidator(object):
             if 'ids' in namespace and 'id_part' in param:
                 continue
             if param.get('required', False) and namespace.__getattribute__(param['name']) is None:
-                missing_args.append('/'.join(param['options']))
+                missing_args.append('/'.join(param['options']) if param['options'] else f'<{param["name"].upper()}>')
         if len(missing_args) > 0:
             raise ValidateFailureException(f"the following arguments are required: {', '.join(missing_args)} ")
 
         if meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
             raise ConfirmationNoYesException()
 
-    def validate_separate_command(self, signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
+    def validate_sig_params(self, signature: List[str], parameters: List[str], non_interactive=False, no_help=True):
         def handle_help(e=None):
             if no_help:
                 raise ValidateHelpException() from e

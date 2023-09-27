@@ -73,6 +73,10 @@ class ParserTestCase(unittest.TestCase):
         parser.parse_args(['-n', 'a'])
         with self.assertRaisesRegex(ParserFailureException, r'argument --name/-n: invalid choice:.*'):
             parser.parse_args(['-n', 'c'])
+        with self.assertRaisesRegex(ParserFailureException, r'argument --output/-o: invalid choice:.*'):
+            parser.parse_args(['-n', 'a', '--out', '<OUTPUT_FORMAT>'])
+        with self.assertRaisesRegex(ParserFailureException, r'argument --query: invalid jmespath_type value:.*'):
+            parser.parse_args(['-n', 'a', '--query', '<QUERY>'])
 
     def test_help(self):
         with self.assertRaises(ParserHelpException):
