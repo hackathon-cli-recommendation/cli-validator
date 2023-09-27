@@ -1,8 +1,10 @@
 import os
 import shutil
 import unittest
+from unittest.mock import patch
 
-from cli_validator.cmd_meta.loader import fetch_metas, load_metas_from_disk, ResourceNotExistException, load_metas
+from cli_validator.cmd_meta.loader import fetch_metas, load_metas_from_disk, ResourceNotExistException, load_metas, \
+    load_version_index, load_latest_version
 from cli_validator.cmd_tree.loader import fetch_command_tree
 
 
@@ -32,8 +34,24 @@ class LoaderTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_aio_load(self):
         from cli_validator.cmd_meta.loader.aio import load_metas
-        metas = await load_metas('2.51.0')
+        metas = await load_metas('2.53.0', self.meta_data_dir)
         self.assertNotEqual(len(metas), 0)
+
+    def test_fetch_version(self):
+        self.assertGreater(len(load_version_index(self.meta_data_dir, True)), 20)
+        version = load_latest_version(self.meta_data_dir, True)
+        self.assertRegex(version, r'\d+\.\d+\.\d+')
+
+    async def test_aio_fetch_version(self):
+        from cli_validator.cmd_meta.loader.aio import load_version_index
+        self.assertGreater(len(await load_version_index(self.meta_data_dir, True)), 20)
+
+    @patch('cli_validator.cmd_meta.loader.aio.load_version_index')
+    async def test_fetch_latest(self, mock_load_version_index: unittest.mock.Mock):
+        from cli_validator.cmd_meta.loader.aio import load_metas
+        mock_load_version_index.return_value = ['2.49.0', '2.50.0']
+        await load_metas(meta_dir=self.meta_data_dir)
+        mock_load_version_index.assert_called()
 
     async def asyncTearDown(self) -> None:
         await super().asyncTearDown()

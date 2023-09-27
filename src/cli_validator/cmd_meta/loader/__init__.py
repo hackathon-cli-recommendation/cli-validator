@@ -36,6 +36,19 @@ def download_blob(url: str, target_path: str):
         raise ResourceNotExistException(e.message)
 
 
+def load_version_index(target_dir: str = './cmd_meta', force_refresh=True):
+    if not os.path.exists(f'{target_dir}'):
+        os.makedirs(f'{target_dir}')
+    if force_refresh or not os.path.exists(f'{target_dir}/version_list.txt'):
+        download_blob(f'{BLOB_URL}/{CONTAINER_NAME}/version_list.txt', f'{target_dir}/version_list.txt')
+    with open(f'{target_dir}/version_list.txt', 'r', encoding='utf-8') as f:
+        return [v.strip(' \n')[10:] for v in f.readlines() if v.strip(' \n')]
+
+
+def load_latest_version(target_dir: str = './cmd_meta', force_refresh=True):
+    return load_version_index(target_dir, force_refresh)[-1]
+
+
 def fetch_metas(version: str, target_dir: str = './cmd_meta'):
     """
     Fetch `cmd-metadata-per-version` from Azure Blob
@@ -77,14 +90,17 @@ def load_metas_from_disk(version: str, meta_dir: str = './cmd_meta'):
     return metas
 
 
-def load_metas(version: str, meta_dir: str = './cmd_meta', force_refresh=False):
+def load_metas(version: Optional[str] = None, meta_dir: str = './cmd_meta', force_refresh=False, version_refresh=True):
     """
     Load Command Metadata from local cache, fetch from Blob if not found
     :param version: version of `azure-cli` to be loaded
     :param meta_dir: root directory to cache Command Metadata
     :param force_refresh: load the metadata through network no matter whether there is a cache
+    :param version_refresh: load the version index no matter whether there is a cache
     :return: list of command metadata
     """
+    if not version:
+        version = load_latest_version(meta_dir, force_refresh=version_refresh)
     metas = load_metas_from_disk(version, meta_dir) if not force_refresh else None
     if not metas:
         fetch_metas(version, meta_dir)
@@ -113,7 +129,9 @@ def load_meta_from_disk(version: str, module: str, meta_dir: str = './cmd_meta')
     return None
 
 
-def load_meta(version: str, module: str, meta_dir: str = './cmd_meta'):
+def load_meta(module: str, version: Optional[str] = None, meta_dir: str = './cmd_meta', version_refresh=True):
+    if not version:
+        version = load_latest_version(meta_dir, force_refresh=version_refresh)
     meta = load_meta_from_disk(version, module, meta_dir)
     if not meta:
         fetch_meta(version, module, meta_dir)
