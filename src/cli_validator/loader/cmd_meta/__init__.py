@@ -1,4 +1,3 @@
-import importlib.util
 import json
 import logging
 import os
@@ -164,9 +163,9 @@ def _attach_sub_group_to_node(sub_group, tree_node, module):
         _attach_sub_group_to_node(sub_group, next_tree_node, module)
 
 
-def build_command_tree(metas):
+def build_command_tree(metas, source):
     tree = {}
     for meta in metas.values():
         module = meta["module_name"]
         _attach_sub_group_to_node(meta, tree, module)
-    return CommandTreeParser(tree)
+    return CommandTreeParser(tree, source)

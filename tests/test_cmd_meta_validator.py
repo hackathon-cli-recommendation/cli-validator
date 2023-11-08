@@ -1,8 +1,10 @@
+import os
 import shlex
 import unittest
 from typing import List
 
-from cli_validator.cmd_meta.validator import CommandMetaValidator
+from cli_validator.loader.core_repo import CoreRepoLoader
+from cli_validator.meta.validator import CommandMetaValidator
 from cli_validator.exceptions import ParserFailureException, ValidateHelpException, ConfirmationNoYesException, \
     ValidateFailureException, AmbiguousOptionException, UnknownCommandException
 
@@ -11,14 +13,22 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.validator = CommandMetaValidator('test_meta')
-        await self.validator.load_metas_async('2.50.0')
+        self.core_repo_loader = CoreRepoLoader(os.path.join('test_cache', 'core_repo'))
+        await self.core_repo_loader.load_async('2.51.0')
 
     def validate_command(self, command: str, **kwargs):
-        self.validator.validate_command(shlex.split(command), **kwargs)
+        cmd_info = self.core_repo_loader.command_tree.parse_command(shlex.split(command))
+        if cmd_info.module is None:
+            return
+        meta = self.core_repo_loader.load_command_meta(cmd_info.signature, cmd_info.module)
+        validator = CommandMetaValidator(meta)
+        validator.validate_params(cmd_info.parameters, **kwargs)
 
     def validate_separate(self, signature: str, parameter: List[str], **kwargs):
-        self.validator.validate_sig_params(shlex.split(signature), parameter, **kwargs)
+        cmd_info = self.core_repo_loader.command_tree.parse_command(shlex.split(signature))
+        meta = self.core_repo_loader.load_command_meta(cmd_info.signature, cmd_info.module)
+        validator = CommandMetaValidator(meta)
+        validator.validate_param_keys(parameter, **kwargs)
 
     def test_validate_command(self):
         self.validate_command('az webapp create -g g -n n -p p')
@@ -34,30 +44,14 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValidateFailureException):
             self.validate_separate('az vm create', ['-n', '-g', '--unknown'])
 
-    def test_signature_with_param(self):
-        with self.assertRaises(ValidateFailureException):
-            self.validate_separate('az vmss show -o table', ['-g', '-n'])
-
     def test_help(self):
-        with self.assertRaises(ValidateHelpException):
-            self.validate_command('az help')
-        with self.assertRaises(ValidateHelpException):
-            self.validate_command('az webapp --help')
         with self.assertRaises(ValidateFailureException):
             self.validate_command('az webapp unknown --help')
         with self.assertRaises(ValidateHelpException):
             self.validate_command('az webapp create --help')
-        self.validate_command('az help', no_help=False)
-        self.validate_command('az webapp --help', no_help=False)
         self.validate_command('az webapp create --help', no_help=False)
         with self.assertRaises(ValidateHelpException):
-            self.validate_separate('az help', [])
-        with self.assertRaises(ValidateHelpException):
-            self.validate_separate('az webapp', ['--help'])
-        with self.assertRaises(ValidateHelpException):
             self.validate_separate('az webapp create', ['--help'])
-        self.validate_separate('az help', [], no_help=False)
-        self.validate_separate('az webapp', ['--help'], no_help=False)
         self.validate_separate('az webapp create', ['--help'], no_help=False)
 
     def test_confirmation(self):

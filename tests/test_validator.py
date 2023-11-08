@@ -1,4 +1,3 @@
-import json
 import unittest
 
 from cli_validator.validator import CLIValidator
@@ -15,21 +14,44 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
             'az vmss create -n nnn -g ggg --image microsoftwindowsserver:windowsserver:2019-datacenter-zhcn:latest '
             '--admin-username vmtest --admin-password Test123456789#']
         for command in commands:
-            self.assertIsNone(self.validator.validate_command(command))
-        self.assertIsNotNone(self.validator.validate_command(
+            self.assertTrue(self.validator.validate_command(command).is_valid)
+        self.assertFalse(self.validator.validate_command(
             'az vmss update --resource-group <resource-group-name> --name <vmss-name> '
             '--image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest --security-type TrustedLaunch '
-            '--enable-vtpm true'))
-        self.assertIsNone(self.validator.validate_command('az acr build . --image $imageName --registry $registryName --file Dockerfile --build-arg http_proxy=http://myproxy.com'))
+            '--enable-vtpm true').is_valid)
+        self.assertTrue(self.validator.validate_command(
+            'az acr build . --image $imageName --registry $registryName --file Dockerfile --build-arg http_proxy=http://myproxy.com').is_valid)
+
+    def test_help(self):
+        self.assertEqual(self.validator.validate_command('az help').error_message, 'The input command is help or `--help`.')
+        self.assertEqual(self.validator.validate_command('az webapp --help').error_message, 'The input command is help or `--help`.')
+        self.assertFalse(self.validator.validate_command('az webapp unknown --help').is_valid)
+        self.assertEqual(self.validator.validate_command('az webapp create --help').error_message, 'The input command is help or `--help`.')
+        self.assertTrue(self.validator.validate_command('az help', no_help=False).is_valid)
+        self.assertTrue(self.validator.validate_command('az webapp --help', no_help=False).is_valid)
+        self.assertTrue(self.validator.validate_command('az webapp create --help', no_help=False).is_valid)
+        self.assertFalse(self.validator.validate_sig_params('az help', []).is_valid)
+        self.assertFalse(self.validator.validate_sig_params('az webapp', ['--help']).is_valid)
+        self.assertFalse(self.validator.validate_sig_params('az webapp create', ['--help']).is_valid)
+        self.assertTrue(self.validator.validate_sig_params('az help', [], no_help=False).is_valid)
+        self.assertTrue(self.validator.validate_sig_params('az webapp', ['--help'], no_help=False).is_valid)
+        self.assertTrue(self.validator.validate_sig_params('az webapp create', ['--help'], no_help=False).is_valid)
 
     def test_quota_error(self):
-        self.assertEqual(self.validator.validate_command('az group show -n "/subscription/{sub}/resourceGroup/{rg}').msg, 'No closing quotation')
+        self.assertEqual(
+            self.validator.validate_command('az group show -n "/subscription/{sub}/resourceGroup/{rg}').error_message,
+            'No closing quotation')
 
     def test_placeholder(self):
-        self.assertIsNone(self.validator.validate_command('az network public-ip create -g $(az group list) -n $name --sku <SKU NAME>'))
+        self.assertTrue(self.validator.validate_command(
+            'az network public-ip create -g $(az group list) -n $name --sku <SKU NAME>').is_valid)
 
     def test_extension_command(self):
-        self.assertIsNone(self.validator.validate_command('az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"'))
+        self.assertTrue(self.validator.validate_command(
+            'az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"').is_valid)
+
+    def test_signature_with_param(self):
+        self.assertEqual(self.validator.validate_sig_params('az vmss show -o table', ['-g', '-n']).error_message, 'Unknown Command: "az vmss show -o table". Do you mean "az vmss show"?')
 
     def test_command_set(self):
         command_set = [
@@ -63,7 +85,7 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
         ]
         result = self.validator.validate_command_set(command_set)
         self.assertEqual(len(result.errors), 0)
-        self.assertIsNone(result.items[0].result)
-        self.assertIsNone(result.items[0].example_result)
-        self.assertIsNone(result.items[1].result)
-        self.assertIsNone(result.items[1].example_result)
+        self.assertTrue(result.items[0].result.is_valid)
+        self.assertTrue(result.items[0].example_result.is_valid)
+        self.assertTrue(result.items[1].result.is_valid)
+        self.assertTrue(result.items[1].example_result.is_valid)

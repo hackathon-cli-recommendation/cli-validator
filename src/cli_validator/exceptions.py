@@ -1,6 +1,14 @@
+from typing import List
+
+
 class ValidateFailureException(Exception):
     def __init__(self, msg):
         self.msg = msg
+
+
+class CommandMetaNotFoundException(ValidateFailureException):
+    def __init__(self, sig: List[str]):
+        super().__init__('Command Metadat of "az {}" is not Found'.format(' '.join(sig)))
 
 
 class ParserFailureException(ValidateFailureException):
@@ -51,7 +59,7 @@ class CommandTreeCorruptedException(ValidateFailureException):
 
 class UnknownCommandException(ValidateFailureException):
     def __init__(self, command):
-        super().__init__(f'Unknown Command: \'{command}\'.')
+        super().__init__(f'Unknown Command: "{command}".')
 
 
 class MissingSubCommandException(UnknownCommandException):
@@ -62,4 +70,4 @@ class MissingSubCommandException(UnknownCommandException):
 class TooLongSignatureException(UnknownCommandException):
     def __init__(self, command, fixed):
         super().__init__(command)
-        self.msg += f' Do you mean \'{fixed}\'?'
+        self.msg += f' Do you mean "{fixed}"?'
