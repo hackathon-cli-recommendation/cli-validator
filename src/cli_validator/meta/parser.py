@@ -2,7 +2,7 @@ import argparse
 import re
 from typing import NoReturn
 
-from cli_validator.cmd_meta.util import support_ids
+from cli_validator.meta.util import support_ids
 from cli_validator.exceptions import ParserHelpException, ParserFailureException, ChoiceNotExistsException
 
 

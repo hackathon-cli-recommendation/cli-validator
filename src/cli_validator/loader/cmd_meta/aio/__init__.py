@@ -6,7 +6,7 @@ from typing import Optional
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob.aio import BlobClient
 
-from cli_validator.cmd_meta.loader import ResourceNotExistException, load_metas_from_disk
+from cli_validator.loader.cmd_meta import ResourceNotExistException, load_metas_from_disk
 
 BLOB_URL = 'https://azcmdchangemgmt.blob.core.windows.net'
 CONTAINER_NAME = 'cmd-metadata-per-version'

@@ -1,19 +1,33 @@
+from enum import Enum
 from typing import Optional, List
 
 from cli_validator.exceptions import ValidateFailureException
 
 
-class FailureInfo(object):
-    def __init__(self, msg: str, command: Optional[str] = None):
-        self.msg = msg
+class CommandSource(str, Enum):
+    UNKNOWN = "Unknown Source"
+    CORE_MODULE = "Core Module"
+    EXTENSION = "Extension"
+
+
+class ValidationResult:
+    def __init__(self, command: str, is_valid: bool, source: CommandSource, validated_param=True,
+                 error_message: Optional[str] = None):
         self.command = command
+        self.is_valid = is_valid
+        self.cmd_source = source
+        self.validated_param = validated_param
+        self.error_message = error_message
 
     @staticmethod
-    def from_exception(e: ValidateFailureException, command: str):
-        return FailureInfo(e.msg, command)
+    def from_exception(e: ValidateFailureException, command: str, source: CommandSource = CommandSource.UNKNOWN):
+        return ValidationResult(command, False, source, error_message=e.msg)
 
     def __str__(self):
-        return 'Failure ({}): \t{}'.format(self.command, self.msg)
+        if self.is_valid:
+            return f"The command is valid and belongs to the {self.cmd_source}."
+        else:
+            return f"The command is invalid. {self.error_message}"
 
 
 class CommandSetResultItem(object):
@@ -21,8 +35,8 @@ class CommandSetResultItem(object):
         self.signature = command.get('command')
         self.parameters = command.get('arguments')
         self.example = command.get('example')
-        self.result: Optional[FailureInfo] = None
-        self.example_result: Optional[FailureInfo] = None
+        self.result: Optional[ValidationResult] = None
+        self.example_result: Optional[ValidationResult] = None
 
 
 class CommandSetResult(object):
@@ -33,7 +47,7 @@ class CommandSetResult(object):
 
     def append(self, item: CommandSetResultItem):
         self.items.append(item)
-        if item.result:
+        if item.result and not item.result.is_valid:
             self.errors.append(item)
-        if item.example_result:
+        if item.example_result and not item.example_result.is_valid:
             self.example_errors.append(item)

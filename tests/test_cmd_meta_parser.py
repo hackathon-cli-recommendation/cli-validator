@@ -1,6 +1,6 @@
 import unittest
 
-from cli_validator.cmd_meta.parser import CLIParser, ParserFailureException
+from cli_validator.meta.parser import CLIParser, ParserFailureException
 from cli_validator.exceptions import ParserHelpException, ChoiceNotExistsException
 
 
