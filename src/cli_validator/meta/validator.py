@@ -1,10 +1,10 @@
-import shlex
-from typing import List, Optional
+import re
+from typing import List
 
 from cli_validator.meta.parser import CLIParser
 from cli_validator.meta.util import support_ids
 from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, MissingSubCommandException, AmbiguousOptionException, TooLongSignatureException
+    ValidateFailureException, AmbiguousOptionException
 
 
 class CommandMetaValidator(object):
@@ -44,6 +44,7 @@ class CommandMetaValidator(object):
         :param no_help: reject commands with `--help`
         :return: parsed namespace
         """
+
         def handle_help(e=None):
             if no_help:
                 raise ValidateHelpException() from e
@@ -57,7 +58,7 @@ class CommandMetaValidator(object):
 
         missing_args = []
         for param in self.meta['parameters']:
-            if 'ids' in namespace and 'id_part' in param:
+            if 'ids' in namespace and namespace.ids and 'id_part' in param:
                 continue
             if param.get('required', False) and namespace.__getattribute__(param['name']) is None:
                 missing_args.append('/'.join(param['options']) if param['options'] else f'<{param["name"].upper()}>')
@@ -73,23 +74,12 @@ class CommandMetaValidator(object):
                 raise ValidateHelpException() from e
             return None
 
-        # try:
-        #     cmd = self.command_tree.parse_command(signature)
-        #     if cmd.module is None:
-        #         return handle_help()
-        # except MissingSubCommandException as e:
-        #     if len(parameters) == 1 and parameters[0] in ['-h', '--help']:
-        #         return handle_help(e)
-        #     else:
-        #         raise e
-        # if cmd.parameters:
-        #     raise TooLongSignatureException(shlex.join(signature), 'az ' + shlex.join(cmd.signature))
-        # meta = self.load_command_meta(cmd.signature, cmd.module)
         unresolved = []
         param_metas = self.meta['parameters'] + self.GLOBAL_PARAMETERS_META
         if 'subscription' not in [p['name'] for p in self.meta['parameters']]:
             param_metas.append({"name": "_subscription", "options": ['--subscription']})
         option_map = self._build_option_map(param_metas)
+        positional_metas = [meta for meta in param_metas if len(meta["options"]) == 0]
         required = self._get_required_options(param_metas)
         for param in parameters:
             param_meta = self._find_meta(option_map, param)
@@ -102,6 +92,11 @@ class CommandMetaValidator(object):
                         required.pop(param_name)
             elif param in ['--help', '-h']:
                 return handle_help()
+            elif re.match(r'<[a-zA-Z-_.|]+>', param):
+                if len(positional_metas) == 1 and positional_metas[0]['name'] in required:
+                    required.pop(positional_metas[0]['name'])
+                elif param[1:-1].lower() in required and len(required[param[1:-1].lower()]["options"]) == 0:
+                    required.pop(param[1:-1].lower())
             else:
                 unresolved.append(param)
         if len(unresolved) > 0:
@@ -109,7 +104,8 @@ class CommandMetaValidator(object):
         if len(required) > 0:
             raise ValidateFailureException(
                 'the following arguments are required: {}'.format(
-                    ', '.join(['/'.join(param['options']) for param in required.values()])))
+                    ', '.join(['/'.join(param['options']) if param['options'] else f'<{param["name"].upper()}>'
+                               for param in required.values()])))
 
         if self.meta.get('confirmation', False) and non_interactive \
                 and not ('--yes' in parameters or '-y' in parameters):
