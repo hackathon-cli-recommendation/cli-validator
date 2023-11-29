@@ -7,7 +7,6 @@ from cli_validator.loader import BaseLoader
 from cli_validator.loader.core_repo import CoreRepoLoader
 from cli_validator.loader.extension import ExtensionLoader
 from cli_validator.meta.validator import CommandMetaValidator
-from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.exceptions import UnknownCommandException, ValidateFailureException, ValidateHelpException, \
     CommandMetaNotFoundException, MissingSubCommandException, TooLongSignatureException
 from cli_validator.result import ValidationResult, CommandSetResult, CommandSetResultItem, CommandSource
@@ -124,7 +123,7 @@ class CLIValidator(object):
                     raise e from e
                 except UnknownCommandException:
                     continue
-            raise UnknownCommandException(command)
+            raise UnknownCommandException(signature)
         except CommandMetaNotFoundException:
             return ValidationResult(command, True, source, validated_param=False)
         except ValidateFailureException as e:

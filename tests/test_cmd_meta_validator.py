@@ -14,7 +14,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.core_repo_loader = CoreRepoLoader(os.path.join('test_cache', 'core_repo'))
-        await self.core_repo_loader.load_async('2.51.0')
+        await self.core_repo_loader.load_async()
 
     def validate_command(self, command: str, **kwargs):
         cmd_info = self.core_repo_loader.command_tree.parse_command(shlex.split(command))
@@ -90,6 +90,8 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         self.validate_separate('az storage account show', ['--ids', '-n'])
         with self.assertRaisesRegex(ParserFailureException, r'unrecognized arguments: --ids .*'):
             self.validate_command('az webapp create --ids /subscriptions/xxxxx/resourceGroups/xxxxx/xxxxx -p xxxxx')
+        with self.assertRaisesRegex(ValidateFailureException, r'the following arguments are required: --server/-s'):
+            self.validate_command('az sql db copy --name $sourceDatabase --resource-group $sourceResourceGroup --dest-name $destinationDatabase --dest-resource-group $destinationResourceGroup --dest-server $destinationServer')
         with self.assertRaisesRegex(ValidateFailureException, r'unrecognized arguments: --ids.*'):
             self.validate_separate('az webapp create', ['--ids', '-p'])
         with self.assertRaises(ValidateFailureException):
@@ -116,6 +118,13 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         self.validate_command('az group list --subscription sss')
         self.validate_separate('az account set', ['-s'])
         self.validate_separate('az group list', ['--subscription'])
+
+    def test_positional(self):
+        with self.assertRaisesRegex(ValidateFailureException, r'the following arguments are required: <SOURCE_LOCATION>'):
+            self.validate_command('az acr build --registry $acrName --image $imageName --file $dockerfilePath')
+        with self.assertRaisesRegex(ValidateFailureException, r'the following arguments are required: <SOURCE_LOCATION>'):
+            self.validate_separate('az acr build', ["--registry", "--image", "--file"])
+        self.validate_separate('az acr build', ["<SOURCE_LOCATION>", "--registry", "--image", "--file"])
 
     def test_inner_json(self):
         self.validate_command('az vmss extension set --publisher Microsoft.Azure.Extensions --version 2.0 --name CustomScript --resource-group myResourceGroupAG --vmss-name myvmss --settings \'{ "fileUris": ["https://raw.githubusercontent.com/Azure/azure-docs-powershell-samples/master/application-gateway/iis/install_nginx.sh"], "commandToExecute": "./install_nginx.sh" }\'')
