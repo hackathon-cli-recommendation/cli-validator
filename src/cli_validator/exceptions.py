@@ -1,6 +1,11 @@
 from typing import List
 
 
+class VersionNotExistException(Exception):
+    def __init__(self, version: str, product: str):
+        self.msg = f'Metadata of {product} {version} not Found'
+
+
 class ValidateFailureException(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -8,7 +13,7 @@ class ValidateFailureException(Exception):
 
 class CommandMetaNotFoundException(ValidateFailureException):
     def __init__(self, sig: List[str]):
-        super().__init__('Command Metadat of "az {}" is not Found'.format(' '.join(sig)))
+        super().__init__('Command Metadata of "az {}" is not Found'.format(' '.join(sig)))
 
 
 class ParserFailureException(ValidateFailureException):

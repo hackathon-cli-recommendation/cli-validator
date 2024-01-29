@@ -13,33 +13,33 @@ from cli_validator.result import ValidationResult, CommandSetResult, CommandSetR
 
 
 class CLIValidator(object):
-    def __init__(self, cache_dir: str = './cache'):
-        self.core_repo_loader = CoreRepoLoader(os.path.join(cache_dir, 'core_repo'))
-        self.extension_loader = ExtensionLoader(os.path.join(cache_dir, 'extension'))
+    def __init__(self, cache_dir: Optional[str] = './cache'):
+        core_repo_path = os.path.join(cache_dir, 'core_repo') if cache_dir else None
+        extension_path = os.path.join(cache_dir, 'extension') if cache_dir else None
+        self.core_repo_loader = CoreRepoLoader(core_repo_path)
+        self.extension_loader = ExtensionLoader(extension_path)
         self.loaders: List[BaseLoader] = []
 
-    def load_metas(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
+    def load_metas(self, version: Optional[str] = None, force_refresh=False):
         """
         Load command metadata through network or from local cache
         :param version: the version of Azure CLI from which the metadata is extracted
         :param force_refresh: force using the metadata on the network instead of local cache
-        :param version_refresh: load the version index no matter whether there is a cache
         """
-        self.core_repo_loader.load(version, force_refresh=force_refresh, version_refresh=version_refresh)
-        self.extension_loader.load(force_refresh=version_refresh)
+        self.core_repo_loader.load(version, force_refresh=force_refresh)
+        self.extension_loader.load()
         self.loaders.extend([self.core_repo_loader, self.extension_loader])
 
-    async def load_metas_async(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
+    async def load_metas_async(self, version: Optional[str] = None, force_refresh=False):
         """
         Load command metadata through network or from local cache
         :param version: the version of Azure CLI from which the metadata is extracted
         :param force_refresh: force using the metadata on the network instead of local cache
-        :param version_refresh: load the version index no matter whether there is a cache
         """
         import asyncio
         await asyncio.gather(
-            self.core_repo_loader.load_async(version, force_refresh=force_refresh, version_refresh=version_refresh),
-            self.extension_loader.load_async(force_refresh=version_refresh))
+            self.core_repo_loader.load_async(version, force_refresh=force_refresh),
+            self.extension_loader.load_async())
         self.loaders.extend([self.core_repo_loader, self.extension_loader])
 
     def validate_command(self, command: str, non_interactive=False, placeholder=True, no_help=True, comments=False):

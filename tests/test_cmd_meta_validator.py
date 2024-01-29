@@ -1,5 +1,6 @@
 import os
 import shlex
+import shutil
 import unittest
 from typing import List
 
@@ -13,7 +14,8 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.core_repo_loader = CoreRepoLoader(os.path.join('test_cache', 'core_repo'))
+        self.meta_data_dir = 'test_cache'
+        self.core_repo_loader = CoreRepoLoader(os.path.join(self.meta_data_dir, 'core_repo'))
         await self.core_repo_loader.load_async()
 
     def validate_command(self, command: str, **kwargs):
@@ -124,6 +126,7 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
             self.validate_command('az acr build --registry $acrName --image $imageName --file $dockerfilePath')
         with self.assertRaisesRegex(ValidateFailureException, r'the following arguments are required: <SOURCE_LOCATION>'):
             self.validate_separate('az acr build', ["--registry", "--image", "--file"])
+        self.validate_command('az acr build <SOURCE_LOCATION> --registry $acrName --image $imageName --file $dockerfilePath')
         self.validate_separate('az acr build', ["<SOURCE_LOCATION>", "--registry", "--image", "--file"])
 
     def test_inner_json(self):
@@ -138,3 +141,8 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
     #
     # def test_sub_command(self):
     #     self.validate_command('az keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show -n n -g g --query password --output tsv) --role acrpull)')
+
+    async def asyncTearDown(self) -> None:
+        await super().asyncTearDown()
+        if os.path.exists(self.meta_data_dir):
+            shutil.rmtree(self.meta_data_dir)
