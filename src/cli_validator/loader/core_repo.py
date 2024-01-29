@@ -10,26 +10,24 @@ class CoreRepoLoader(BaseLoader):
     BLOB_URL = 'https://azcmdchangemgmt.blob.core.windows.net'
     CONTAINER_NAME = 'cmd-metadata-per-version'
 
-    def __init__(self, cache_dir: str = './core_repo'):
+    def __init__(self, cache_dir: Optional[str] = './core_repo'):
         """
         :param cache_dir: cache directory that store the downloaded metadata
         """
         super().__init__()
         self.cache_dir = cache_dir
 
-    def load(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
+    def load(self, version: Optional[str] = None, force_refresh=False):
         """
         :param version: the version of `azure-cli` that provides the metadata
         :param force_refresh: load the metadata through network no matter whether there is a cache
-        :param version_refresh: load the version index no matter whether there is a cache
         """
-        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh, version_refresh=version_refresh)
+        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh)
         self.command_tree = build_command_tree(self.metas, CommandSource.CORE_MODULE)
 
-    async def load_async(self, version: Optional[str] = None, force_refresh=False, version_refresh=True):
+    async def load_async(self, version: Optional[str] = None, force_refresh=False):
         from cli_validator.loader.cmd_meta.aio import load_metas
-        self.metas = await load_metas(version, self.cache_dir, force_refresh=force_refresh,
-                                      version_refresh=version_refresh)
+        self.metas = await load_metas(version, self.cache_dir, force_refresh=force_refresh)
         self.command_tree = build_command_tree(self.metas, CommandSource.CORE_MODULE)
 
 

@@ -1,6 +1,12 @@
+from enum import Enum
 from typing import Optional, List
 
 from cli_validator.cmd_tree import CommandTreeParser
+
+
+class CacheStrategy(str, Enum):
+    CacheAside = 'CacheAside'
+    Fallback = 'Fallback'
 
 
 class BaseLoader(object):
