@@ -31,7 +31,7 @@ class ValidationResult:
 
 
 class ScriptValidationItem:
-    def __init__(self, lineno: int, end_lineno, col_pos: int, end_col_pos: int, result: ValidationResult):
+    def __init__(self, lineno: int, col_pos: int, end_lineno: int, end_col_pos: int, result: ValidationResult):
         self.lineno = lineno
         self.col_pos = col_pos
         self.end_lineno = end_lineno

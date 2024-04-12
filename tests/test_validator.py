@@ -175,7 +175,6 @@ class CLIValidatorNoCacheTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result[3].result.is_valid)
         self.assertFalse(result[4].result.is_valid)
         self.assertEqual(len(result), 9)
-        print()
 
     def test_dollar_expression(self):
         result = self.validator.validate_script('az ad sp create-for-rbac --name $ACR_NAME --scopes $(az acr show -n n -g g --query id --output tsv) --role acrpull')
