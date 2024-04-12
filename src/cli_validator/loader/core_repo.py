@@ -14,8 +14,7 @@ class CoreRepoLoader(BaseLoader):
         """
         :param cache_dir: cache directory that store the downloaded metadata
         """
-        super().__init__()
-        self.cache_dir = cache_dir
+        super().__init__(cache_dir)
 
     def load(self, version: Optional[str] = None, force_refresh=False):
         """

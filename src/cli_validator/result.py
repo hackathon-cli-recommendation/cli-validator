@@ -30,6 +30,15 @@ class ValidationResult:
             return f"The command is invalid. {self.error_message}"
 
 
+class ScriptValidationItem:
+    def __init__(self, lineno: int, end_lineno, col_pos: int, end_col_pos: int, result: ValidationResult):
+        self.lineno = lineno
+        self.col_pos = col_pos
+        self.end_lineno = end_lineno
+        self.end_col_pos = end_col_pos
+        self.result = result
+
+
 class CommandSetResultItem(object):
     def __init__(self, command):
         self.signature = command.get('command')

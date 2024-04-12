@@ -17,8 +17,7 @@ class ExtensionLoader(BaseLoader):
     EXTENSION_COMMAND_TREE_URL = 'https://aka.ms/azExtCmdTree'
 
     def __init__(self, cache_dir: Optional[str] = './extension'):
-        super().__init__()
-        self.cache_dir = cache_dir
+        super().__init__(cache_dir)
         self.tree_path = os.path.join(self.cache_dir, 'ext_command_tree.json') if self.cache_dir else None
 
     def load(self):

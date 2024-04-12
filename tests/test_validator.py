@@ -43,7 +43,7 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
     def test_quota_error(self):
         self.assertEqual(
             self.validator.validate_command('az group show -n "/subscription/{sub}/resourceGroup/{rg}').error_message,
-            'No closing quotation')
+            'Fail to Parse command: No closing quotation')
 
     def test_placeholder(self):
         self.assertTrue(self.validator.validate_command(
@@ -166,3 +166,24 @@ class CLIValidatorNoCacheTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.items[1].result.is_valid)
         self.assertTrue(result.items[1].example_result.is_valid)
 
+    def test_script(self):
+        script = "#!/bin/bash\n\n# Define variables\n_artifactsLocation=\"[deployment().properties.templateLink.uri]\"\n_artifactsLocationSasToken=\"\"\ndnsLabelPrefix=\"zytest\"\nadminUsername=\"azureuser\"\nimagePublisher=\"openlogic\"\nimageOffer=\"CentOS\"\nimageSku=\"7.2\"\nsshPublicKey=\"zytest\"\nmountFolder=\"/data\"\nnodeSize=\"Standard_D2s_v3\"\ndockerVer=\"1.12\"\ndockerComposeVer=\"1.9.0-rc2\"\ndockerMachineVer=\"0.8.2\"\ndataDiskSize=10\nmasterVMName=\"centos\"\nnumDataDisks=4\nlocation=\"westus\"\n\n# Create availability set\naz vm availability-set create --name avSet -g rg --location $location --platform-fault-domain-count 2 --platform-update-domain-count 5\n\n# Create network security group\naz network nsg create --name default-NSG --location $location\naz network nsg rule create --name default-allow-22 --nsg-name default-NSG --priority 1000 --access Allow --direction Inbound --destination-port-ranges 22 --protocol Tcp --source-address-prefixes \"*\" --source-port-ranges \"*\" --destination-address-prefixes \"*\"\n\n# Create virtual network\naz network vnet create --name virtualnetwork --location $location --address-prefix 10.0.0.0/16\naz network vnet subnet create --name dse --vnet-name virtualnetwork --address-prefix 10.0.0.0/24 --network-security-group default-NSG\n\n# Create public IP address\naz network public-ip create --name publicips --location $location --dns-name $dnsLabelPrefix --allocation-method Dynamic\n\n# Create network interface\naz network nic create --name nic --location $location --vnet-name virtualnetwork --subnet dse --ip-forwarding --public-ip-address \\\npublicips --private-ip-address 10.0.0.254\n\n# Create virtual machine\naz vm create --name $masterVMName --location $location --availability-set avSet --size $nodeSize --image $imagePublisher:$imageOffer:$imageSku:latest --admin-username $adminUsername --ssh-key-value $sshPublicKey --nics nic --os-disk-name ${masterVMName}_OSDisk --os-disk-caching ReadWrite --data-disk-sizes-gb $dataDiskSize --data-disk-caching ReadWrite\n\n# Add extension to virtual machine\naz vm extension set --publisher Microsoft.Azure.Extensions --version 2.0 --name CustomScript --vm-name $masterVMName --settings \"{\"fileUris\": [\"\"$_artifactsLocation\"\"], \"commandToExecute\": \"bash azuredeploy.sh \"$masterVMName\" \"$mountFolder\" \"$numDataDisks\" \"$dockerVer\" \"$dockerComposeVer\" \"$adminUsername\" \"$imageSku\" \"$dockerMachineVer\"\"]}\""
+        result = self.validator.validate_script(script)
+        self.assertTrue(result[0].result.is_valid)
+        self.assertFalse(result[1].result.is_valid)
+        self.assertFalse(result[2].result.is_valid)
+        self.assertFalse(result[3].result.is_valid)
+        self.assertFalse(result[4].result.is_valid)
+        self.assertEqual(len(result), 9)
+        print()
+
+    def test_dollar_expression(self):
+        result = self.validator.validate_script('az ad sp create-for-rbac --name $ACR_NAME --scopes $(az acr show -n n -g g --query id --output tsv) --role acrpull')
+        self.assertTrue(result[0].result.is_valid)
+        self.assertTrue(result[1].result.is_valid)
+
+    def test_sub_command(self):
+        result = self.validator.validate_script('az keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show -n n -g g --query password --output tsv) --role acrpull)')
+        self.assertTrue(result[0].result.is_valid)
+        self.assertTrue(result[1].result.is_valid)
+        self.assertTrue(result[2].result.is_valid)

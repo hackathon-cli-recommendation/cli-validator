@@ -76,3 +76,8 @@ class TooLongSignatureException(UnknownCommandException):
     def __init__(self, command, fixed):
         super().__init__(command)
         self.msg += f' Do you mean "{fixed}"?'
+
+
+class ScriptParseException(ValidateFailureException):
+    def __init__(self, msg: str, lineno: int, line: str, col_pos: int):
+        super().__init__(f'Fail to parse script: {msg} in Line {lineno}, Col {col_pos}: \n{line}')
