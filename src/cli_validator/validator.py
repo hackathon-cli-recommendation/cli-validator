@@ -67,7 +67,10 @@ class CLIValidator(object):
                                                    token_set[-1].end_col_pos, validation_result))
             return result
         except ValidateFailureException as e:
-            result.append([ScriptValidationItem(0, 0, 0, 0, ValidationResult.from_exception(e, script))])
+            lines = script.splitlines()
+            end_lineno = len(lines) - 1 if lines else 0
+            end_col_pos = len(lines[-1]) if lines else 0
+            result.append(ScriptValidationItem(0, 0, end_lineno, end_col_pos, ValidationResult.from_exception(e, script)))
             return result
 
     def validate_command(self, command: str, non_interactive=False, placeholder=True, no_help=True, comments=False):
