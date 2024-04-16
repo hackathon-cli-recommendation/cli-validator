@@ -55,7 +55,7 @@ def _split_with_pos(line: str, lineno=0):
 def extract_token_sets_from_script(script: str):
     command_parts = []
     parenthesis_left = re.compile(r'^[a-zA-Z0-9-_=$]*\(')
-    parenthesis_right = re.compile(r'(\);*)+$')
+    parenthesis_right = re.compile(r'(\)[a-zA-Z0-9-_=$;\"\']*)+$')
 
     for lineno, line in enumerate(script.splitlines()):
         if line.endswith('\\'):
