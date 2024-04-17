@@ -9,7 +9,9 @@ from cli_validator.loader.extension import ExtensionLoader
 from cli_validator.meta.validator import CommandMetaValidator
 from cli_validator.exceptions import UnknownCommandException, ValidateFailureException, ValidateHelpException, \
     CommandMetaNotFoundException, MissingSubCommandException, TooLongSignatureException
-from cli_validator.result import ValidationResult, CommandSetResult, CommandSetResultItem, CommandSource
+from cli_validator.result import ValidationResult, CommandSetResult, CommandSetResultItem, CommandSource, \
+    ScriptValidationItem
+from cli_validator.script import iter_az_commands, idx_from_script
 
 
 class CLIValidator(object):
@@ -42,6 +44,35 @@ class CLIValidator(object):
             self.extension_loader.load_async())
         self.loaders.extend([self.core_repo_loader, self.extension_loader])
 
+    def validate_script(self, script: str, non_interactive=False, no_help=True) -> List[ScriptValidationItem]:
+        """
+        Validate all CLI commands in a script.
+        Please note this method is under development and only support `$(...)` in assignment.
+        :param script: to be validated
+        :param non_interactive: check `--yes` in a command with confirmation
+        :param no_help: reject commands with `--help`
+        :return: a list of validated result
+        """
+        result = []
+        try:
+            for token_set in iter_az_commands(script):
+                if not token_set:
+                    continue
+                tokens = [token.content for token in token_set]
+                script_start = idx_from_script(script, token_set[0].lineno, token_set[0].col_pos)
+                script_end = idx_from_script(script, token_set[-1].end_lineno, token_set[-1].end_col_pos)
+                raw_command = script[script_start: script_end]
+                validation_result = self._validate_command(raw_command, tokens, non_interactive, True, no_help)
+                result.append(ScriptValidationItem(token_set[0].lineno, token_set[0].col_pos, token_set[-1].end_lineno,
+                                                   token_set[-1].end_col_pos, validation_result))
+            return result
+        except ValidateFailureException as e:
+            lines = script.splitlines()
+            end_lineno = len(lines) - 1 if lines else 0
+            end_col_pos = len(lines[-1]) if lines else 0
+            result.append(ScriptValidationItem(0, 0, end_lineno, end_col_pos, ValidationResult.from_exception(e, script)))
+            return result
+
     def validate_command(self, command: str, non_interactive=False, placeholder=True, no_help=True, comments=False):
         """
         Validate an input command
@@ -50,17 +81,21 @@ class CLIValidator(object):
         :param placeholder: allow placeholder like `<ResourceName>`, `$ResourceName` as field value
         :param no_help: reject commands with `--help`
         :param comments: parse comments in the given command
-        :return: the failure info if command is invalid, else `None`
+        :return: the validated result
         """
+        try:
+            if placeholder:
+                command = re.sub(r' ((\$\([a-zA-Z0-9_ -.\[\]]*\))|(\${[a-zA-Z0-9_ -.\[\]]*})|'
+                                 r'(<[a-zA-Z0-9_ ]*>)|(<<[a-zA-Z0-9_ -]*>>))', r' "\1"', command)
+            tokens = shlex.split(command, comments)
+        except ValueError as e:
+            return ValidationResult(command, False, CommandSource.UNKNOWN, False,
+                                    f'Fail to Parse command: {e}')
+        return self._validate_command(command, tokens, non_interactive, placeholder, no_help)
+
+    def _validate_command(self, command: str, tokens: List[str], non_interactive=False, placeholder=True, no_help=True):
         source = CommandSource.UNKNOWN
         try:
-            try:
-                if placeholder:
-                    command = re.sub(r' ((\$\([a-zA-Z0-9_ -.\[\]]*\))|(\${[a-zA-Z0-9_ -.\[\]]*})|'
-                                     r'(<[a-zA-Z0-9_ ]*>)|(<<[a-zA-Z0-9_ -]*>>))', r' "\1"', command)
-                tokens = shlex.split(command, comments)
-            except ValueError as e:
-                raise ValidateFailureException(str(e)) from e
             for loader in self.loaders:
                 try:
                     cmd_info = loader.command_tree.parse_command(tokens)

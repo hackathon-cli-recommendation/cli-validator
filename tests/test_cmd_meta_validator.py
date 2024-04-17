@@ -103,6 +103,11 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
         self.validate_command('az group show -n qinkai-test -o tsv')
         self.validate_separate('az group show', ['-n', '-o'])
 
+    def test_arg_type(self):
+        with self.assertRaisesRegex(ParserFailureException, 'argument --port/-p: invalid int value: \'abc\''):
+            self.validate_command('az webapp ssh -g rg -n name --port abc')
+        self.validate_command('az webapp ssh -g rg -n name --port 8080')
+
     def test_network(self):
         self.validate_command('az network vnet create --name chatgpt-VNet-123456 --resource-group chatgpt-ResourceGroup-123456 --location $location --address-prefix 10.0.0.0/8 --subnet-name chatgpt-Subnet-123456 --subnet-prefix 10.0.0.0/24')
         self.validate_separate('az network vnet create',  ['--name', '--resource-group', '--location', '--address-prefix', '--subnet-name', '--subnet-prefix'])
@@ -135,12 +140,6 @@ class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
 
     def test_complex_query(self):
         self.validate_command('az webapp deployment list-publishing-profiles --name $webapp --resource-group $resourceGroup --query "[?contains(publishMethod, \'FTP\')].[publishUrl,userName,userPWD]" --output tsv')
-
-    # def test_dollar_expression(self):
-    #     self.validate_command('az ad sp create-for-rbac --name $ACR_NAME --scopes $(az acr show -n n -g g --query id --output tsv) --role acrpull')
-    #
-    # def test_sub_command(self):
-    #     self.validate_command('az keyvault secret set --vault-name $AKV_NAME --name $ACR_NAME --value $(az ad sp create-for-rbac --scopes $(az acr show -n n -g g --query password --output tsv) --role acrpull)')
 
     async def asyncTearDown(self) -> None:
         await super().asyncTearDown()
