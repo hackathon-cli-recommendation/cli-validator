@@ -5,8 +5,7 @@ import os
 import shutil
 from typing import Optional
 
-from azure.core.exceptions import ResourceNotFoundError
-from azure.storage.blob import BlobClient
+import requests
 
 from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.exceptions import VersionNotExistException
@@ -24,10 +23,9 @@ def load_blob_text(url: str, cache_path: Optional[str] = None, cache_strategy: C
     if cache_strategy == CacheStrategy.CacheAside and cache_path and os.path.exists(cache_path):
         return load_from_local(cache_path, encoding)
     try:
-        with BlobClient.from_blob_url(url) as blob:
-            stream = blob.download_blob()
-            data = stream.readall()
-            data = data.decode(encoding)
+        resp = requests.get(url, params=None)
+        resp.raise_for_status()
+        data = resp.text
     except Exception as e:
         logger.error("Fail to Download Blob", exc_info=e)
         if cache_strategy == CacheStrategy.Fallback and cache_path and os.path.exists(cache_path):
@@ -55,7 +53,7 @@ def try_load_meta(version: str, file_name: str, target_dir: Optional[str] = None
     try:
         meta = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/{file_name}', cache_path)
         return json.loads(meta)
-    except ResourceNotFoundError as e:
+    except requests.HTTPError as e:
         logger.error(f'`azure-cli-{version}/{file_name}` not Found', exc_info=e)
         return None
     except json.JSONDecodeError as e:
@@ -68,7 +66,7 @@ def load_meta_index(version: str, target_dir: Optional[str] = './cmd_meta'):
         cache_path = f'{target_dir}/azure-cli-{version}/index.txt' if target_dir else None
         index = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/index.txt', cache_path,
                                cache_strategy=CacheStrategy.Fallback)
-    except ResourceNotFoundError as e:
+    except requests.HTTPError as e:
         raise VersionNotExistException(version, 'Azure CLI') from e
     file_list = [f.strip() for f in index.strip(' \n').split()]
     return file_list

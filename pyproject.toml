@@ -13,7 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "azure_storage_blob ~= 12.17.0",
+    "httpx ~= 0.27.0",
     "jmespath ~= 1.0.1",
 ]
 
