@@ -1,6 +1,6 @@
 [project]
 name = "cli-validator"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   { name="qinkaiwu", email="qinkaiwu@microsoft.com" },
 ]
