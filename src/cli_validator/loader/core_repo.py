@@ -2,7 +2,7 @@ from typing import Optional
 
 from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.loader import BaseLoader
-from cli_validator.loader.cmd_meta import load_metas
+from cli_validator.loader.cmd_meta import load_core_metas
 from cli_validator.result import CommandSource
 
 
@@ -21,7 +21,7 @@ class CoreRepoLoader(BaseLoader):
         :param version: the version of `azure-cli` that provides the metadata
         :param force_refresh: load the metadata through network no matter whether there is a cache
         """
-        self.metas = load_metas(version, self.cache_dir, force_refresh=force_refresh)
+        self.metas = load_core_metas(version, self.cache_dir, force_refresh=force_refresh)
         self.command_tree = build_command_tree(self.metas, CommandSource.CORE_MODULE)
 
     async def load_async(self, version: Optional[str] = None, force_refresh=False):

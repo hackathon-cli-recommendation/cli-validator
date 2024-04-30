@@ -87,11 +87,11 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
             }
         ]
         result = self.validator.validate_command_set(command_set)
-        self.assertEqual(len(result.errors), 0)
+        self.assertEqual(len(result.errors), 1)
         self.assertTrue(result.items[0].result.is_valid)
         self.assertTrue(result.items[0].example_result.is_valid)
-        self.assertTrue(result.items[1].result.is_valid)
-        self.assertTrue(result.items[1].example_result.is_valid)
+        self.assertFalse(result.items[1].result.is_valid)
+        self.assertFalse(result.items[1].example_result.is_valid)
 
     async def asyncTearDown(self) -> None:
         await super().asyncTearDown()
@@ -123,8 +123,10 @@ class CLIValidatorNoCacheTestCase(unittest.IsolatedAsyncioTestCase):
             'az network public-ip create -g $(az group list) -n $name --sku <SKU NAME>').is_valid)
 
     def test_extension_command(self):
-        self.assertTrue(self.validator.validate_command(
-            'az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"').is_valid)
+        result = self.validator.validate_command(
+            'az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"')
+        self.assertTrue(result.is_valid)
+        self.assertTrue(result.validated_param)
 
     def test_signature_with_param(self):
         self.assertEqual(self.validator.validate_sig_params('az vmss show -o table', ['-g', '-n']).error_message, 'Unknown Command: "az vmss show -o table". Do you mean "az vmss show"?')
@@ -160,11 +162,11 @@ class CLIValidatorNoCacheTestCase(unittest.IsolatedAsyncioTestCase):
             }
         ]
         result = self.validator.validate_command_set(command_set)
-        self.assertEqual(len(result.errors), 0)
+        self.assertEqual(len(result.errors), 1)
         self.assertTrue(result.items[0].result.is_valid)
         self.assertTrue(result.items[0].example_result.is_valid)
-        self.assertTrue(result.items[1].result.is_valid)
-        self.assertTrue(result.items[1].example_result.is_valid)
+        self.assertFalse(result.items[1].result.is_valid)
+        self.assertFalse(result.items[1].example_result.is_valid)
 
     def test_script(self):
         script = "#!/bin/bash\n\n# Define variables\nadminUsername=\"zytest\"\nvmName=\"zytest\"\nlocation=\"westus\"\nauthenticationType=\"sshPublicKey\"\nadminPasswordOrKey=\"zytest\"\nvmSize=\"Standard_A1_v2\"\nstorageAccountName=$(echo -n $vmName | md5sum | cut -c 1-24)\"storage\"\nimagePublisher=\"RedHat\"\nimageOffer=\"RHEL\"\nnicName=$(echo -n $vmName | md5sum | cut -c 1-24)\"nic\"\naddressPrefix=\"10.0.0.0/16\"\nsubnetName=\"Subnet\"\nsubnetPrefix=\"10.0.0.0/24\"\nstorageAccountType=\"Standard_LRS\"\npublicIPAddressName=$(echo -n $vmName | md5sum | cut -c 1-24)\"publicip\"\npublicIPAddressType=\"Dynamic\"\nvirtualNetworkName=$(echo -n $vmName | md5sum | cut -c 1-24)\"vnet\"\nnetworkSecurityGroupName=$subnetName\"-nsg\"\n\n# Create storage account\naz storage account create --name $storageAccountName -g rg --location $location --sku $storageAccountType --kind StorageV2\n\n# Create public IP address\naz network public-ip create --name $publicIPAddressName --location $location --allocation-method $publicIPAddressType\n\n# Create network security group\naz network nsg create --name $networkSecurityGroupName --location $location\n\n# Add security rule to the NSG\naz network nsg rule create --nsg-name $networkSecurityGroupName --name default-allow-22 --priority 1000 --access Allow --direction Inbound --destination-port-ranges 22 --protocol Tcp --source-address-prefixes \"*\" --source-port-ranges \"*\" --destination-address-prefixes \"*\"\n\n# Create virtual network\naz network vnet create --name $virtualNetworkName --location $location --address-prefix $addressPrefix --subnet-name $subnetName --subnet-prefix $subnetPrefix --network-security-group $networkSecurityGroupName\n\n# Create network interface\naz network nic create --name $nicName --location $location --vnet-name $virtualNetworkName --subnet $subnetName --public-ip-address $publicIPAddressName\n\n# Create virtual machine\naz vm create --name $vmName --location $location --size $vmSize --admin-username $adminUsername --admin-password $adminPasswordOrKey --authentication-type $authenticationType --image $imagePublisher:$imageOffer:7.8:latest --nics $nicName --storage-sku $storageAccountType --os-disk-name $vmName\"_OSDisk\" --data-disk-sizes-gb 100 100 --boot-diagnostics-storage $storageAccountName\n\n# Enable boot diagnostics\naz vm boot-diagnostics enable --name $vmName --storage $storageAccountName"

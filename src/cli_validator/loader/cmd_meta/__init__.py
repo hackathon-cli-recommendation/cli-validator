@@ -36,43 +36,48 @@ def load_blob_text(url: str, cache_path: Optional[str] = None, cache_strategy: C
     return data
 
 
-def load_version_index(target_dir: Optional[str] = None):
-    cache_path = f'{target_dir}/version_list.txt' if target_dir else None
-    data = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/version_list.txt', cache_path, CacheStrategy.Fallback)
+def load_version_index(target_dir: Optional[str] = None, ext_name: Optional[str] = None):
+    ext_sep = f'/azure-cli-extensions/ext-{ext_name}' if ext_name else ''
+    cache_path = f'{target_dir}{ext_sep}/version_list.txt' if target_dir else None
+    data = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}{ext_sep}/version_list.txt', cache_path, CacheStrategy.Fallback)
     data = data.strip(' \n')
-    return [v.strip()[10:] for v in data.split() if v.strip()]
+    return [v.strip() for v in data.split() if v.strip()]
 
 
-def load_latest_version(target_dir: Optional[str] = None):
-    version_list = load_version_index(target_dir)
+def load_latest_version(target_dir: Optional[str] = None, ext_name: Optional[str] = None):
+    version_list = load_version_index(target_dir, ext_name=ext_name)
     return version_list[-1]
 
 
-def try_load_meta(version: str, file_name: str, target_dir: Optional[str] = None):
-    cache_path = f'{target_dir}/azure-cli-{version}/{file_name}' if target_dir else None
+def try_load_meta(rel_uri: str, target_dir: Optional[str] = None):
+    cache_path = f'{target_dir}/{rel_uri}' if target_dir else None
     try:
-        meta = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/{file_name}', cache_path)
+        meta = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/{rel_uri}', cache_path)
         return json.loads(meta)
     except requests.HTTPError as e:
-        logger.error(f'`azure-cli-{version}/{file_name}` not Found', exc_info=e)
+        logger.error(f'`{rel_uri}` not Found', exc_info=e)
         return None
     except json.JSONDecodeError as e:
-        logger.error(f'Error when parsing `azure-cli-{version}/{file_name}`', exc_info=e)
+        logger.error(f'Error when parsing `{rel_uri}`', exc_info=e)
         return None
 
 
-def load_meta_index(version: str, target_dir: Optional[str] = './cmd_meta'):
+def try_load_core_meta(version_dir: str, file_name: str, target_dir: Optional[str] = None):
+    return try_load_meta(f'{version_dir}/{file_name}', target_dir)
+
+
+def load_meta_index(version_dir: str, target_dir: Optional[str] = './cmd_meta'):
     try:
-        cache_path = f'{target_dir}/azure-cli-{version}/index.txt' if target_dir else None
-        index = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/azure-cli-{version}/index.txt', cache_path,
+        cache_path = f'{target_dir}/{version_dir}/index.txt' if target_dir else None
+        index = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/{version_dir}/index.txt', cache_path,
                                cache_strategy=CacheStrategy.Fallback)
     except requests.HTTPError as e:
-        raise VersionNotExistException(version, 'Azure CLI') from e
+        raise VersionNotExistException(version_dir, 'Azure CLI') from e
     file_list = [f.strip() for f in index.strip(' \n').split()]
     return file_list
 
 
-def load_metas(version: Optional[str] = None, meta_dir: Optional[str] = './cmd_meta', force_refresh=False):
+def load_core_metas(version: Optional[str] = None, meta_dir: Optional[str] = './cmd_meta', force_refresh=False):
     """
     Load Command Metadata from local cache, fetch from Blob if not found
     :param version: version of `azure-cli` to be loaded
@@ -81,14 +86,16 @@ def load_metas(version: Optional[str] = None, meta_dir: Optional[str] = './cmd_m
     :return: list of command metadata
     """
     if not version:
-        version = load_latest_version(meta_dir)
+        version_dir = load_latest_version(meta_dir)
+    else:
+        version_dir = f'azure-cli-{version}'
     if meta_dir:
-        if force_refresh and os.path.exists(f'{meta_dir}/azure-cli-{version}'):
-            shutil.rmtree(f'{meta_dir}/azure-cli-{version}')
-        os.makedirs(f'{meta_dir}/azure-cli-{version}', exist_ok=True)
+        if force_refresh and os.path.exists(f'{meta_dir}/{version_dir}'):
+            shutil.rmtree(f'{meta_dir}/{version_dir}')
+        os.makedirs(f'{meta_dir}/{version_dir}', exist_ok=True)
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        file_names = load_meta_index(version, meta_dir)
-        metas = executor.map(lambda file_name: try_load_meta(version, file_name, meta_dir), file_names)
+        file_names = load_meta_index(version_dir, meta_dir)
+        metas = executor.map(lambda file_name: try_load_core_meta(version_dir, file_name, meta_dir), file_names)
         metas = dict(zip(file_names, metas))
         metas = dict([(file_name, meta) for (file_name, meta) in metas.items() if meta is not None])
     if not metas:

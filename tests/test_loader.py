@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from cli_validator.exceptions import VersionNotExistException
-from cli_validator.loader.cmd_meta import load_metas, load_version_index, load_latest_version
+from cli_validator.loader.cmd_meta import load_core_metas, load_version_index, load_latest_version
 from cli_validator.loader.extension import load_http
 
 
@@ -18,12 +18,12 @@ class LoaderTestCase(unittest.IsolatedAsyncioTestCase):
             os.mkdir(self.tree_data_dir)
 
     def test_load_metas(self):
-        meta = load_metas('2.50.0', self.meta_data_dir)
+        meta = load_core_metas('2.50.0', self.meta_data_dir)
         self.assertNotEqual(len(meta), 0)
 
     def test_fetch_not_existed(self):
         with self.assertRaises(VersionNotExistException):
-            load_metas('2.50.10', self.meta_data_dir)
+            load_core_metas('2.50.10', self.meta_data_dir)
 
     async def test_aio_load(self):
         from cli_validator.loader.cmd_meta.aio import load_metas
@@ -36,37 +36,37 @@ class LoaderTestCase(unittest.IsolatedAsyncioTestCase):
     def test_fetch_version(self):
         self.assertGreater(len(load_version_index()), 20)
         version = load_latest_version()
-        self.assertRegex(version, r'\d+\.\d+\.\d+')
+        self.assertRegex(version, r'azure-cli-\d+\.\d+\.\d+')
 
     async def test_aio_fetch_version(self):
         from cli_validator.loader.cmd_meta.aio import load_version_index, load_latest_version
         self.assertGreater(len(await load_version_index()), 20)
         version = await load_latest_version()
-        self.assertRegex(version, r'\d+\.\d+\.\d+')
+        self.assertRegex(version, r'azure-cli-\d+\.\d+\.\d+')
 
     @patch('cli_validator.loader.cmd_meta.aio.load_version_index')
     async def test_fetch_latest(self, mock_load_version_index: unittest.mock.Mock):
         from cli_validator.loader.cmd_meta.aio import load_metas
-        mock_load_version_index.return_value = ['2.49.0', '2.50.0']
+        mock_load_version_index.return_value = ['azure-cli-2.49.0', 'azure-cli-2.50.0']
         await load_metas(meta_dir=self.meta_data_dir)
         mock_load_version_index.assert_called()
 
     def test_concurrent_fetch(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            metas = executor.map(lambda _: load_metas(meta_dir=self.meta_data_dir), range(8))
+            metas = executor.map(lambda _: load_core_metas(meta_dir=self.meta_data_dir), range(8))
         for meta in metas:
             self.assertNotEqual(len(meta), 0)
 
     @patch('cli_validator.loader.cmd_meta.try_load_meta')
     def test_force_reload(self, mock_try_load_meta: unittest.mock.Mock):
         mock_try_load_meta.return_value = {}
-        metas = load_metas(meta_dir=self.meta_data_dir)
+        metas = load_core_metas(meta_dir=self.meta_data_dir)
         self.assertNotEqual(len(metas), 0)
         call_count = mock_try_load_meta.call_count
         self.assertEqual(call_count, len(metas))
         mock_try_load_meta.reset_mock()
         mock_try_load_meta.return_value = {}
-        load_metas(meta_dir=self.meta_data_dir, force_refresh=True)
+        load_core_metas(meta_dir=self.meta_data_dir, force_refresh=True)
         self.assertEqual(mock_try_load_meta.call_count, call_count)
 
     async def asyncTearDown(self) -> None:

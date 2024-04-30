@@ -1,12 +1,13 @@
 import json
 import logging
 import os
-from typing import Optional
+from typing import Optional, List
 
 import requests
 
 from cli_validator.cmd_tree import CommandTreeParser
 from cli_validator.loader import BaseLoader, CacheStrategy
+from cli_validator.loader.cmd_meta import load_latest_version, try_load_meta
 from cli_validator.loader.utils import load_from_local, store_to_local
 from cli_validator.result import CommandSource
 
@@ -34,6 +35,22 @@ class ExtensionLoader(BaseLoader):
                                          cache_strategy=CacheStrategy.Fallback)
         tree = json.loads(raw_tree)
         self.command_tree = CommandTreeParser(tree, CommandSource.EXTENSION)
+
+    def _ext_meta_rel_uri(self, ext_name: str, version: Optional[str] = None):
+        if not version:
+            file_name = load_latest_version(self.cache_dir, ext_name)
+        else:
+            file_name = f'az_{ext_name}_meta_{version}.json'
+        return f'azure-cli-extensions/ext-{ext_name}/{file_name}'
+
+    def load_command_meta(self, signature: List[str], module: str):
+        rel_uri = self._ext_meta_rel_uri(module, version=None)
+        meta = try_load_meta(rel_uri, self.cache_dir)
+        if meta:
+            for idx in range(len(signature) - 1):
+                meta = meta['sub_groups'][' '.join(signature[:idx + 1])]
+            return meta['commands'][' '.join(signature)]
+        return None
 
 
 def load_http(url: str, cache_path: Optional[str] = None, cache_strategy: CacheStrategy = CacheStrategy.CacheAside,
