@@ -5,8 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from cli_validator.exceptions import VersionNotExistException
-from cli_validator.loader.cmd_meta import load_core_metas, load_version_index, load_latest_version
-from cli_validator.loader.extension import load_http
+from cli_validator.loader.cmd_meta import load_core_metas, load_version_index, load_latest_version, load_http
 
 
 class LoaderTestCase(unittest.IsolatedAsyncioTestCase):

@@ -18,8 +18,8 @@ CONTAINER_NAME = 'cmd-metadata-per-version'
 logger = logging.getLogger(__name__)
 
 
-def load_blob_text(url: str, cache_path: Optional[str] = None, cache_strategy: CacheStrategy = CacheStrategy.CacheAside,
-                   encoding: str = 'utf-8'):
+def load_http(url: str, cache_path: Optional[str] = None, cache_strategy: CacheStrategy = CacheStrategy.CacheAside,
+              encoding: str = 'utf-8'):
     if cache_strategy == CacheStrategy.CacheAside and cache_path and os.path.exists(cache_path):
         return load_from_local(cache_path, encoding)
     try:
@@ -39,7 +39,7 @@ def load_blob_text(url: str, cache_path: Optional[str] = None, cache_strategy: C
 def load_version_index(target_dir: Optional[str] = None, ext_name: Optional[str] = None):
     ext_sep = f'/azure-cli-extensions/ext-{ext_name}' if ext_name else ''
     cache_path = f'{target_dir}{ext_sep}/version_list.txt' if target_dir else None
-    data = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}{ext_sep}/version_list.txt', cache_path, CacheStrategy.Fallback)
+    data = load_http(f'{BLOB_URL}/{CONTAINER_NAME}{ext_sep}/version_list.txt', cache_path, CacheStrategy.Fallback)
     data = data.strip(' \n')
     return [v.strip() for v in data.split() if v.strip()]
 
@@ -52,7 +52,7 @@ def load_latest_version(target_dir: Optional[str] = None, ext_name: Optional[str
 def try_load_meta(rel_uri: str, target_dir: Optional[str] = None):
     cache_path = f'{target_dir}/{rel_uri}' if target_dir else None
     try:
-        meta = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/{rel_uri}', cache_path)
+        meta = load_http(f'{BLOB_URL}/{CONTAINER_NAME}/{rel_uri}', cache_path)
         return json.loads(meta)
     except requests.HTTPError as e:
         logger.error(f'`{rel_uri}` not Found', exc_info=e)
@@ -69,8 +69,8 @@ def try_load_core_meta(version_dir: str, file_name: str, target_dir: Optional[st
 def load_meta_index(version_dir: str, target_dir: Optional[str] = './cmd_meta'):
     try:
         cache_path = f'{target_dir}/{version_dir}/index.txt' if target_dir else None
-        index = load_blob_text(f'{BLOB_URL}/{CONTAINER_NAME}/{version_dir}/index.txt', cache_path,
-                               cache_strategy=CacheStrategy.Fallback)
+        index = load_http(f'{BLOB_URL}/{CONTAINER_NAME}/{version_dir}/index.txt', cache_path,
+                          cache_strategy=CacheStrategy.Fallback)
     except requests.HTTPError as e:
         raise VersionNotExistException(version_dir, 'Azure CLI') from e
     file_list = [f.strip() for f in index.strip(' \n').split()]
