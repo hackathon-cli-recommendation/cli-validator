@@ -4,6 +4,7 @@ import os
 from typing import Optional, List
 
 from cli_validator.cmd_tree import CommandTreeParser
+from cli_validator.exceptions import CommandMetaNotFoundException
 from cli_validator.loader import BaseLoader, CacheStrategy
 from cli_validator.loader.cmd_meta import load_latest_version, try_load_meta
 from cli_validator.result import CommandSource
@@ -46,7 +47,10 @@ class ExtensionLoader(BaseLoader):
         rel_uri = self._ext_meta_rel_uri(module, version=None)
         meta = try_load_meta(rel_uri, self.cache_dir)
         if meta:
-            for idx in range(len(signature) - 1):
-                meta = meta['sub_groups'][' '.join(signature[:idx + 1])]
-            return meta['commands'][' '.join(signature)]
+            try:
+                for idx in range(len(signature) - 1):
+                    meta = meta['sub_groups'][' '.join(signature[:idx + 1])]
+                return meta['commands'][' '.join(signature)]
+            except KeyError as e:
+                raise CommandMetaNotFoundException(signature) from e
         return None
