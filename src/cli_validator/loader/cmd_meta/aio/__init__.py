@@ -56,6 +56,9 @@ async def try_load_meta(version_dir: str, file_name: str, target_dir: Optional[s
     except httpx.HTTPStatusError as e:
         logger.error(f'`{version_dir}/{file_name}` not Found', exc_info=e)
         return None
+    except httpx.RequestError as e:
+        logger.error(f'Error when loading `{version_dir}/{file_name}`', exc_info=e)
+        return None
     except json.JSONDecodeError as e:
         logger.error(f'Error when parsing `{version_dir}/{file_name}`', exc_info=e)
         return None

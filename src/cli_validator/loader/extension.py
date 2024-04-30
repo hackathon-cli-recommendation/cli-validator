@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class ExtensionLoader(BaseLoader):
-    EXTENSION_COMMAND_TREE_URL = 'https://aka.ms/azExtCmdTree'
+    EXTENSION_COMMAND_TREE_URL = \
+        'https://azurecliextensionsync.blob.core.windows.net/cmd-index/extensionCommandTree.json'
 
     def __init__(self, cache_dir: Optional[str] = './extension'):
         super().__init__(cache_dir)
