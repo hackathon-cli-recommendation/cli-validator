@@ -21,7 +21,7 @@ class ValidationResult:
 
     @staticmethod
     def from_exception(e: ValidateFailureException, command: str, source: CommandSource = CommandSource.UNKNOWN):
-        return ValidationResult(command, False, source, error_message=e.msg)
+        return ValidationResult(command, False, source, error_message=e.msg, validated_param=False)
 
     def __str__(self):
         if self.is_valid:
