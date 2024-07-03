@@ -1,6 +1,6 @@
 import unittest
 
-from cli_validator.meta.parser import CLIParser, ParserFailureException
+from cli_validator.meta.parser import CLIParser, ParserException
 from cli_validator.exceptions import ParserHelpException, ChoiceNotExistsException
 
 
@@ -41,14 +41,14 @@ class ParserTestCase(unittest.TestCase):
         self.parser.load_meta(meta, check_required=True, placeholder=True)
 
     def test_vm_create(self):
-        with self.assertRaisesRegex(ParserFailureException, r'.*the following arguments are required.*-g.*'):
+        with self.assertRaisesRegex(ParserException, r'.*the following arguments are required.*-g.*'):
             self.parser.parse_args(['-n', 'name'])
-        with self.assertRaisesRegex(ParserFailureException, r'.*the following arguments are required.*-n.*'):
+        with self.assertRaisesRegex(ParserException, r'.*the following arguments are required.*-n.*'):
             self.parser.parse_args(['-g', 'rg'])
         self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME'])
-        with self.assertRaisesRegex(ParserFailureException, r'.*unrecognized arguments.*--unknown'):
+        with self.assertRaisesRegex(ParserException, r'.*unrecognized arguments.*--unknown'):
             self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--unknown'])
-        with self.assertRaisesRegex(ParserFailureException, r'argument --query: invalid jmespath_type value:.*'):
+        with self.assertRaisesRegex(ParserException, r'argument --query: invalid jmespath_type value:.*'):
             self.parser.parse_args(['-g', 'rg', '--name', 'VM_NAME', '--query', 'dfa.fad[0]daf'])
 
     def test_placeholder(self):
@@ -71,11 +71,11 @@ class ParserTestCase(unittest.TestCase):
         parser = CLIParser(prog='az', add_help=True)
         parser.load_meta(meta, check_required=True, placeholder=False)
         parser.parse_args(['-n', 'a'])
-        with self.assertRaisesRegex(ParserFailureException, r'argument --name/-n: invalid choice:.*'):
+        with self.assertRaisesRegex(ParserException, r'argument --name/-n: invalid choice:.*'):
             parser.parse_args(['-n', 'c'])
-        with self.assertRaisesRegex(ParserFailureException, r'argument --output/-o: invalid choice:.*'):
+        with self.assertRaisesRegex(ParserException, r'argument --output/-o: invalid choice:.*'):
             parser.parse_args(['-n', 'a', '--out', '<OUTPUT_FORMAT>'])
-        with self.assertRaisesRegex(ParserFailureException, r'argument --query: invalid jmespath_type value:.*'):
+        with self.assertRaisesRegex(ParserException, r'argument --query: invalid jmespath_type value:.*'):
             parser.parse_args(['-n', 'a', '--query', '<QUERY>'])
 
     def test_help(self):

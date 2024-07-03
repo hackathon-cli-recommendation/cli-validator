@@ -1,10 +1,22 @@
 import shlex
-from typing import List
+from enum import Enum
+from typing import List, Optional
 
-from cli_validator.command import CommandInfo
 from cli_validator.exceptions import EmptyCommandException, NonAzCommandException, CommandTreeCorruptedException, \
     UnknownCommandException, MissingSubCommandException
-from cli_validator.result import CommandSource
+
+
+class CommandSource(str, Enum):
+    UNKNOWN = "Unknown Source"
+    CORE_MODULE = "Core Module"
+    EXTENSION = "Extension"
+
+
+class CommandInfo(object):
+    def __init__(self, module: Optional[str], signature: List[str], parameters: List[str]):
+        self.module = module
+        self.signature = signature
+        self.parameters = parameters
 
 
 class CommandTreeParser(object):
@@ -12,7 +24,7 @@ class CommandTreeParser(object):
         self.cmd_tree = cmd_tree
         self.source = source
 
-    def parse_command(self, command: List[str]):
+    def parse_command(self, command: List[str]) -> CommandInfo:
         """
         Parse a Command into CommandInfo using CommandTree
         :param command: command to be validated

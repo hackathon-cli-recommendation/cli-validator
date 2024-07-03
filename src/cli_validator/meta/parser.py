@@ -2,8 +2,8 @@ import argparse
 import re
 from typing import NoReturn
 
-from cli_validator.meta.util import support_ids
-from cli_validator.exceptions import ParserHelpException, ParserFailureException, ChoiceNotExistsException
+from .utils import support_ids
+from cli_validator.exceptions import ParserHelpException, ParserException, ChoiceNotExistsException
 
 
 class CustomHelpAction(argparse.Action):
@@ -186,4 +186,4 @@ class CLIParser(argparse.ArgumentParser):
         Raise an exception when parse fails.
         :param message: error message
         """
-        raise ParserFailureException(message)
+        raise ParserException(message)

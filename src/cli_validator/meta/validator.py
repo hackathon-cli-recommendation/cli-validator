@@ -1,10 +1,10 @@
 import re
 from typing import List
 
-from cli_validator.meta.parser import CLIParser
-from cli_validator.meta.util import support_ids
+from .parser import CLIParser
+from .utils import support_ids
 from cli_validator.exceptions import ValidateHelpException, ParserHelpException, ConfirmationNoYesException, \
-    ValidateFailureException, AmbiguousOptionException
+    ValidateException, AmbiguousOptionException
 
 
 class CommandMetaValidator(object):
@@ -63,7 +63,7 @@ class CommandMetaValidator(object):
             if param.get('required', False) and namespace.__getattribute__(param['name']) is None:
                 missing_args.append('/'.join(param['options']) if param['options'] else f'<{param["name"].upper()}>')
         if len(missing_args) > 0:
-            raise ValidateFailureException(f"the following arguments are required: {', '.join(missing_args)} ")
+            raise ValidateException(f"the following arguments are required: {', '.join(missing_args)} ")
 
         if self.meta.get('confirmation', False) and non_interactive and not ('yes' in namespace and namespace.yes):
             raise ConfirmationNoYesException()
@@ -100,9 +100,9 @@ class CommandMetaValidator(object):
             else:
                 unresolved.append(param)
         if len(unresolved) > 0:
-            raise ValidateFailureException('unrecognized arguments: {}'.format(', '.join(unresolved)))
+            raise ValidateException('unrecognized arguments: {}'.format(', '.join(unresolved)))
         if len(required) > 0:
-            raise ValidateFailureException(
+            raise ValidateException(
                 'the following arguments are required: {}'.format(
                     ', '.join(['/'.join(param['options']) if param['options'] else f'<{param["name"].upper()}>'
                                for param in required.values()])))

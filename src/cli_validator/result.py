@@ -1,13 +1,6 @@
-from enum import Enum
 from typing import Optional, List
 
-from cli_validator.exceptions import ValidateFailureException
-
-
-class CommandSource(str, Enum):
-    UNKNOWN = "Unknown Source"
-    CORE_MODULE = "Core Module"
-    EXTENSION = "Extension"
+from cli_validator.cmd_tree import CommandSource
 
 
 class ValidationResult:
@@ -20,7 +13,7 @@ class ValidationResult:
         self.error_message = error_message
 
     @staticmethod
-    def from_exception(e: ValidateFailureException, command: str, source: CommandSource = CommandSource.UNKNOWN):
+    def from_exception(e, command: str, source: CommandSource = CommandSource.UNKNOWN):
         return ValidationResult(command, False, source, error_message=e.msg, validated_param=False)
 
     def __str__(self):
