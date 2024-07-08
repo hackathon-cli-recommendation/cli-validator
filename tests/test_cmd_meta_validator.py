@@ -2,17 +2,18 @@ import shlex
 import unittest
 from typing import List
 
-from cli_validator.meta import MetaRetriever
+from cli_validator.meta import MetaRetrieverFactory
 from cli_validator.meta.validator import CommandMetaValidator
 from cli_validator.exceptions import ParserException, ValidateHelpException, ConfirmationNoYesException, \
     ValidateException, AmbiguousOptionException, UnknownCommandException
 
 
 class TestCmdChangeValidator(unittest.IsolatedAsyncioTestCase):
+    META_RETRIEVER_FACTORY = MetaRetrieverFactory()
 
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.meta_retriever = MetaRetriever()
+        self.meta_retriever = self.META_RETRIEVER_FACTORY.retriever
 
     async def validate_command(self, command: str, **kwargs):
         cmd_meta = await self.meta_retriever.retrieve_meta(shlex.split(command))

@@ -4,12 +4,12 @@ from typing import List
 from cli_validator.cmd_tree import CommandSource, CommandTreeParser
 
 
-class RepoBase(ABC):
+class RepoMetaRetrieverBase(ABC):
     BLOB_URL = 'https://azcmdchangemgmt.blob.core.windows.net'
     CONTAINER_NAME = 'cmd-metadata-per-version'
 
     async def command_tree(self) -> CommandTreeParser:
-        return await self._retrieve_command_tree()
+        raise NotImplementedError()
 
     @property
     @abstractmethod
@@ -17,9 +17,12 @@ class RepoBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def _retrieve_command_tree(self) -> CommandTreeParser:
+    async def load_command_meta(self, signature: List[str], module: str) -> dict:
         raise NotImplementedError()
 
+
+class RepoBase(ABC):
+    @property
     @abstractmethod
-    async def load_command_meta(self, signature: List[str], module: str) -> dict:
+    def meta_retriever(self) -> RepoMetaRetrieverBase:
         raise NotImplementedError()

@@ -47,6 +47,7 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
 
     async def test_extension_command(self):
         result = await self.validator.validate_command('az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"')
+        result = await self.validator.validate_command('az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"')
         self.assertTrue(result.is_valid)
 
     async def test_signature_with_param(self):

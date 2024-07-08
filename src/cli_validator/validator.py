@@ -1,9 +1,9 @@
 import asyncio
 import re
 import shlex
-from typing import List
+from typing import List, Optional
 
-from cli_validator.meta import CommandMetaValidator, MetaRetrieverFactory
+from cli_validator.meta import CommandMetaValidator, MetaRetrieverFactory, MetaRetriever
 from cli_validator.exceptions import (ValidateException, ValidateHelpException, MissingSubCommandException,
                                       TooLongSignatureException, CommandTreeException, ScriptParseException)
 from cli_validator.result import ValidationResult, CommandSetResult, CommandSetResultItem, CommandSource, \
@@ -11,13 +11,18 @@ from cli_validator.result import ValidationResult, CommandSetResult, CommandSetR
 from cli_validator.script import iter_az_commands, idx_from_script, _Token
 
 
-class CLISubValidator(object):
-    pass
-
-
 class CLIValidator(object):
-    def __init__(self):
-        self.meta_retriever_factory = MetaRetrieverFactory()
+    """
+    A Validator that dynamically loads metadata from Azure CLI’s blob storage.
+
+    **Note:** A `CLIValidator` retains the same metadata across different function calls.
+    If a `CLIValidator` is created and used with Azure CLI version 2.59.0,
+    it will continue to use the old metadata even after Azure CLI 2.60.0 is released.
+    """
+    META_RETRIEVER_FACTORY = MetaRetrieverFactory()
+
+    def __init__(self, meta_retriever: Optional[MetaRetriever] = None):
+        self.meta_retriever = meta_retriever or self.META_RETRIEVER_FACTORY.retriever
 
     async def _validate_script_token_set(self, token_set: List[_Token], script: str, non_interactive=False,
                                          no_help=True) -> ScriptValidationItem:
@@ -73,10 +78,9 @@ class CLIValidator(object):
 
     async def _validate_command(self, command: str, tokens: List[str], non_interactive=False, placeholder=True,
                                 no_help=True):
-        meta_retriever = await self.meta_retriever_factory.new()
         source = CommandSource.UNKNOWN
         try:
-            cmd_meta = await meta_retriever.retrieve_meta(tokens)
+            cmd_meta = await self.meta_retriever.retrieve_meta(tokens)
             source = cmd_meta.source
             if cmd_meta.is_help:
                 return handle_help(no_help, command, source)
@@ -97,7 +101,6 @@ class CLIValidator(object):
         :param no_help: reject commands with `--help`
         :return: the failure info if command is invalid, else `None`
         """
-        meta_retriever = await self.meta_retriever_factory.new()
         source = CommandSource.UNKNOWN
         command = '{} {}'.format(signature, ' '.join(parameters))
         try:
@@ -107,7 +110,7 @@ class CLIValidator(object):
                 raise ValidateException(str(e)) from e
 
             try:
-                cmd_meta = await meta_retriever.retrieve_meta(tokens)
+                cmd_meta = await self.meta_retriever.retrieve_meta(tokens)
                 if cmd_meta.is_help:
                     return handle_help(no_help, command, source, e=ValidateHelpException())
             except MissingSubCommandException as e:
