@@ -16,6 +16,12 @@ class CommandMetaNotFoundException(ValidateFailureException):
         super().__init__('Command Metadata of "az {}" is not Found'.format(' '.join(sig)))
 
 
+class ExtensionNotFoundException(CommandMetaNotFoundException):
+    def __init__(self, sig: List[str], module: str):
+        super().__init__(sig)
+        self.msg += f'. Module `{module}` not Found.'
+
+
 class ParserFailureException(ValidateFailureException):
     def __init__(self, msg):
         super().__init__(msg)

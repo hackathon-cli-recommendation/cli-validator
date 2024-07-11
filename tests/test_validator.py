@@ -53,6 +53,12 @@ class CLIValidatorTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.validator.validate_command(
             'az devcenter dev project list --endpoint "https://8a40af38-3b4c-4672-a6a4-5e964b1870ed-contosodevcenter.centralus.devcenter.azure.com/"').is_valid)
 
+    def test_non_host_extension_command(self):
+        result = self.validator.validate_command(
+            'az devops project create --name "MyNewProject" --description "This is a sample project" --org https://dev.azure.com/MyOrganization --visibility private')
+        self.assertTrue(result.is_valid)
+        self.assertFalse(result.validated_param)
+
     def test_signature_with_param(self):
         self.assertEqual(self.validator.validate_sig_params('az vmss show -o table', ['-g', '-n']).error_message, 'Unknown Command: "az vmss show -o table". Do you mean "az vmss show"?')
 
